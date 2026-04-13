@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Game {
+  id              Int      @id @default(autoincrement())
+  startTime       DateTime
+  groupLabel      String?
+  status          String   @default("open")
+  vestCount       Int      @default(20)
+  gameMode        String   @default("Solo 15 Min")
+  isTeamMode      Boolean  @default(false)
+  showGameMode    Boolean  @default(true)
+  birthdayPerson  String?
+  birthdayMessage String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  players         Player[]
+}
+
+model Player {
+  id         Int      @id @default(autoincrement())
+  gameId     Int
+  game       Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  realName   String
+  codename   String?
+  vestNumber Int?
+  status     String   @default("waiting")
+  team       String?
+  isWalkIn   Boolean  @default(false)
+  isBirthday Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([gameId, vestNumber])
+  @@unique([gameId, codename])
+  @@index([gameId, status])
+  @@index([realName])
+}
+
+model WalkInPool {
+  id        Int      @id @default(autoincrement())
+  realName  String
+  createdAt DateTime @default(now())
+}
+
+model BlockedWord {
+  id        Int      @id @default(autoincrement())
+  word      String   @unique
+  createdAt DateTime @default(now())
+}
+
+model SuggestedCodename {
+  id       Int    @id @default(autoincrement())
+  codename String @unique
+  category String @default("general")
+}
+
+model CodenameHistory {
+  id       Int      @id @default(autoincrement())
+  realName String
+  codename String
+  usedAt   DateTime @default(now())
+
+  @@index([realName])
+}
+
+model Setting {
+  key   String @id
+  value String
+}
