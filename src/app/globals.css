@@ -7,7 +7,7 @@
   --color-lm-mid: #3a3a3a;
   --color-lm-gray: #8a8a8a;
   --color-lm-light: #d0d0d0;
-  --color-lm-green: #00ff66;
+  --color-lm-green: #00ffcc;
   --color-lm-yellow: #ffcc00;
   --color-lm-red: #ff3333;
   --color-lm-blue: #00aaff;
@@ -47,8 +47,8 @@ body {
     0deg,
     transparent,
     transparent 2px,
-    rgba(0, 255, 102, 0.015) 2px,
-    rgba(0, 255, 102, 0.015) 4px
+    rgba(0, 255, 204, 0.015) 2px,
+    rgba(0, 255, 204, 0.015) 4px
   );
   pointer-events: none;
   z-index: 50;
@@ -57,12 +57,12 @@ body {
 /* Pulse glow animation */
 @keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 0 20px rgba(0, 255, 102, 0.3),
-                0 0 40px rgba(0, 255, 102, 0.1);
+    box-shadow: 0 0 20px rgba(0, 255, 204, 0.3),
+                0 0 40px rgba(0, 255, 204, 0.1);
   }
   50% {
-    box-shadow: 0 0 30px rgba(0, 255, 102, 0.5),
-                0 0 60px rgba(0, 255, 102, 0.2);
+    box-shadow: 0 0 30px rgba(0, 255, 204, 0.5),
+                0 0 60px rgba(0, 255, 204, 0.2);
   }
 }
 
