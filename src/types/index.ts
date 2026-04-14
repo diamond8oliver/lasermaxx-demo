@@ -1,14 +1,19 @@
 // Game modes
 export const GAME_MODES = [
+  "Solo 12 Min",
   "Solo 15 Min",
   "Solo 20 Min",
   "Team 15 Min",
   "Team 20 Min",
   "Free For All",
+  "Test Game 5 Min",
   "Vampire",
+  "Zombie",
   "VIP",
+  "Queen Bee",
   "Hit Streaks",
   "Battle Royale",
+  "Rock Paper Scissors",
 ] as const;
 
 export type GameMode = (typeof GAME_MODES)[number];
