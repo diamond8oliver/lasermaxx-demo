@@ -5,6 +5,10 @@ export const GAME_MODES = [
   "Team 15 Min",
   "Team 20 Min",
   "Free For All",
+  "Vampire",
+  "VIP",
+  "Hit Streaks",
+  "Battle Royale",
 ] as const;
 
 export type GameMode = (typeof GAME_MODES)[number];

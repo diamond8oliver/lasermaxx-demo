@@ -14,7 +14,7 @@
   --color-lm-cyan: #00ffcc;
   --color-lm-purple: #aa44ff;
 
-  --font-display: "Inter", system-ui, -apple-system, sans-serif;
+  --font-display: "Share Tech Mono", "JetBrains Mono", "Fira Code", ui-monospace, monospace;
 }
 
 :root {

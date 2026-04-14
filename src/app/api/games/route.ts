@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { seedDemoData } from "@/lib/demo-seed";
 import { emitToAll } from "@/lib/socket-server";
 import { EVENTS } from "@/lib/socket-events";
 import { DEFAULT_VEST_COUNT } from "@/lib/constants";
 
 // GET /api/games - List all games for today, ordered by startTime
+// Auto-reseeds demo data if no games exist for today
 export async function GET() {
   try {
     const today = new Date();
@@ -12,7 +14,7 @@ export async function GET() {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const games = await db.game.findMany({
+    let games = await db.game.findMany({
       where: {
         startTime: {
           gte: today,
@@ -24,6 +26,24 @@ export async function GET() {
         _count: { select: { players: true } },
       },
     });
+
+    // Lazy reseed: if no games for today, regenerate demo data
+    if (games.length === 0) {
+      console.log("[Demo] No games for today — auto-reseeding...");
+      await seedDemoData();
+      games = await db.game.findMany({
+        where: {
+          startTime: {
+            gte: today,
+            lt: tomorrow,
+          },
+        },
+        orderBy: { startTime: "asc" },
+        include: {
+          _count: { select: { players: true } },
+        },
+      });
+    }
 
     return NextResponse.json(games);
   } catch (error) {
