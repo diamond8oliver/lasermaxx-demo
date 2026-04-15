@@ -4,6 +4,22 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 const DEFAULT_TIMEOUT = 8;
+const SLOT_INTERVAL_MIN = 20; // Games run every 20 minutes
+
+function getNextSlot(): { time: string; minutesUntil: number } {
+  const now = new Date();
+  const mins = now.getHours() * 60 + now.getMinutes();
+  const nextSlotMins = Math.ceil((mins + 1) / SLOT_INTERVAL_MIN) * SLOT_INTERVAL_MIN;
+  const minutesUntil = nextSlotMins - mins;
+
+  const slotDate = new Date(now);
+  slotDate.setHours(Math.floor(nextSlotMins / 60), nextSlotMins % 60, 0, 0);
+  const time = slotDate
+    .toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+    .toUpperCase();
+
+  return { time, minutesUntil };
+}
 
 export default function ConfirmationPage() {
   const router = useRouter();
@@ -19,6 +35,7 @@ export default function ConfirmationPage() {
   const [remaining, setRemaining] = useState(DEFAULT_TIMEOUT);
   const startTimeRef = useRef<number>(Date.now());
   const timeoutLoaded = useRef(false);
+  const [nextSlot] = useState(getNextSlot);
 
   // Fetch dynamic timeout from settings
   useEffect(() => {
@@ -68,10 +85,10 @@ export default function ConfirmationPage() {
     <div className="flex flex-1 flex-col items-center justify-center gap-10 px-8">
       {/* Mission Assigned Header */}
       <div className="text-center">
-        <h1 className="text-4xl font-bold uppercase tracking-wider text-lm-green">
+        <h1 className="text-4xl font-bold uppercase tracking-wider text-lm-cyan">
           MISSION ASSIGNED
         </h1>
-        <div className="mt-3 h-px w-80 mx-auto bg-gradient-to-r from-transparent via-lm-green/50 to-transparent" />
+        <div className="mt-3 h-px w-80 mx-auto bg-gradient-to-r from-transparent via-lm-cyan/50 to-transparent" />
       </div>
 
       {/* Codename Display */}
@@ -122,16 +139,21 @@ export default function ConfirmationPage() {
         </div>
       )}
 
-      {/* Report to Briefing */}
-      <p className="animate-text-pulse text-lg font-bold uppercase tracking-widest text-lm-green/80">
-        REPORT TO BRIEFING ROOM
-      </p>
+      {/* Report to Airlock */}
+      <div className="text-center">
+        <p className="animate-text-pulse text-lg font-bold uppercase tracking-widest text-lm-cyan/80">
+          REPORT TO AIRLOCK
+        </p>
+        <p className="mt-2 text-2xl font-bold uppercase tracking-wider text-lm-cyan">
+          {nextSlot.time} — {nextSlot.minutesUntil} MIN
+        </p>
+      </div>
 
       {/* Countdown Bar */}
       <div className="w-full max-w-md">
         <div className="h-2 w-full overflow-hidden rounded-full bg-lm-dark">
           <div
-            className="h-full rounded-full bg-lm-green transition-all duration-100 ease-linear"
+            className="h-full rounded-full bg-lm-cyan transition-all duration-100 ease-linear"
             style={{ width: `${progress * 100}%` }}
           />
         </div>
