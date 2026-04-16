@@ -176,16 +176,21 @@ export default function ControlPage() {
     }
   }, []);
 
-  const fetchPlayers = useCallback(async (gameId: number) => {
-    setLoadingPlayers(true);
+  const fetchPlayers = useCallback(async (gameId: number, showLoading = false) => {
+    if (showLoading) setLoadingPlayers(true);
     try {
       const res = await fetch(`/api/games/${gameId}/players`);
-      if (res.ok) setPlayers(await res.json());
+      if (res.ok) {
+        const data: Player[] = await res.json();
+        setPlayers(data);
+        return data;
+      }
     } catch {
       // silent
     } finally {
-      setLoadingPlayers(false);
+      if (showLoading) setLoadingPlayers(false);
     }
+    return null;
   }, []);
 
   const fetchGameDetail = useCallback(async (gameId: number) => {
@@ -209,7 +214,7 @@ export default function ControlPage() {
   function selectGame(gameId: number) {
     setSelectedGameId(gameId);
     fetchGameDetail(gameId);
-    fetchPlayers(gameId);
+    fetchPlayers(gameId, true);
   }
 
   /* ---- Initial fetch ---- */
@@ -227,42 +232,36 @@ export default function ControlPage() {
       fetchGames();
       fetchWalkInPool();
 
-      // If a game is selected, refresh its players and build feed from pending/recent
+      // If a game is selected, refresh players once and build feed from the same data
       const gId = selectedGameIdRef.current;
       if (gId) {
         fetchGameDetail(gId);
-        fetchPlayers(gId);
+        const allPlayers = await fetchPlayers(gId);
 
         // Build live feed from players with pending status or recent codename submissions
-        try {
-          const res = await fetch(`/api/games/${gId}/players`);
-          if (res.ok) {
-            const allPlayers: Player[] = await res.json();
-            const feedCandidates = allPlayers.filter(
-              (p) => p.codename && (p.status === "pending" || p.status === "approved")
-            );
-            for (const p of feedCandidates) {
-              const key = `${p.id}-${p.codename}-${p.status}`;
-              if (!seenPlayerIds.has(key)) {
-                seenPlayerIds.add(key);
-                const entry: FeedEntry = {
-                  id: `${p.id}-${Date.now()}-${Math.random()}`,
-                  playerId: p.id,
-                  gameId: gId,
-                  realName: p.realName,
-                  codename: p.codename!,
-                  vestNumber: p.vestNumber,
-                  status: p.status as PlayerStatus,
-                  team: p.team,
-                  isBirthday: p.isBirthday,
-                  timestamp: Date.now(),
-                };
-                setFeed((prev) => [entry, ...prev].slice(0, 50));
-              }
+        if (allPlayers) {
+          const feedCandidates = allPlayers.filter(
+            (p) => p.codename && (p.status === "pending" || p.status === "approved")
+          );
+          for (const p of feedCandidates) {
+            const key = `${p.id}-${p.codename}-${p.status}`;
+            if (!seenPlayerIds.has(key)) {
+              seenPlayerIds.add(key);
+              const entry: FeedEntry = {
+                id: `${p.id}-${Date.now()}-${Math.random()}`,
+                playerId: p.id,
+                gameId: gId,
+                realName: p.realName,
+                codename: p.codename!,
+                vestNumber: p.vestNumber,
+                status: p.status as PlayerStatus,
+                team: p.team,
+                isBirthday: p.isBirthday,
+                timestamp: Date.now(),
+              };
+              setFeed((prev) => [entry, ...prev].slice(0, 50));
             }
           }
-        } catch {
-          // silent
         }
       }
     }, 3000);
