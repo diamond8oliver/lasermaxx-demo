@@ -13,8 +13,7 @@ This is the public-facing **demo** — the production kiosk app for real LaserMa
 ## Stack
 
 - **Next.js 16** (breaking changes from prior versions — see `AGENTS.md`)
-- **SQLite** for local state (`lasermaxx.db` when present)
-- **Prisma** ORM
+- **PostgreSQL** via **Prisma** ORM (see `prisma/schema.prisma`)
 - **TypeScript** + **Tailwind**
 
 ## Running locally
@@ -47,5 +46,6 @@ Open `http://localhost:3000`.
 - Should the demo mirror the production game-mode catalog or stay on a simplified subset?
 
 **Environment setup required:**
-- `DATABASE_URL` — for SQLite, something like `file:./lasermaxx.db`
+- `DATABASE_URL` — PostgreSQL connection string (e.g. `postgresql://user:pass@host:5432/dbname`)
 - Node 20+ recommended
+- Run `npx prisma migrate deploy` on first setup
