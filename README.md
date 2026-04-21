@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LaserMaxx Demo
 
-## Getting Started
+A public demo / prototype of the LaserMaxx kiosk touchscreen system for laser tag venues. Built on Next.js 16 + SQLite, this demo showcases:
 
-First, run the development server:
+- Staff screen for game setup and operation
+- Airlock countdown on a 20-min schedule
+- Report time reveal on the confirm screen
+- All LaserMaxx game modes (Solo / Team / Elimination variants)
+- Auto-reseeding demo data so you can poke at it without resetting manually
+
+This is the public-facing **demo** — the production kiosk app for real LaserMaxx venues lives in a separate repo.
+
+## Stack
+
+- **Next.js 16** (breaking changes from prior versions — see `AGENTS.md`)
+- **SQLite** for local state (`lasermaxx.db` when present)
+- **Prisma** ORM
+- **TypeScript** + **Tailwind**
+
+## Running locally
 
 ```bash
+npm install
+cp .env.example .env   # fill in DATABASE_URL
+npx prisma migrate deploy
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Next Steps (TODO)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+> Handoff notes for any AI or contributor resuming work. Update before context runs out.
 
-## Learn More
+**Immediate:**
+- Extract repeated staff-screen polling logic into a shared hook
+- Add a `.env.example` file (currently: `DATABASE_URL` is the only required var)
+- Sync any game-mode changes from the production Lasermaxx Codenames repo
 
-To learn more about Next.js, take a look at the following resources:
+**Short-term:**
+- Deploy to Vercel as a live demo link
+- Add a `/how-it-works` explainer page for prospective venue operators
+- Mobile-responsive staff view (tablet is primary, but iPhone fallback is useful)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Blockers / open questions:**
+- Polling race conditions were fixed in `d31de30` — monitor for regressions in airlock state transitions
+- Should the demo mirror the production game-mode catalog or stay on a simplified subset?
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Environment setup required:**
+- `DATABASE_URL` — for SQLite, something like `file:./lasermaxx.db`
+- Node 20+ recommended
