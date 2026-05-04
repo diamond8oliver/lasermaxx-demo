@@ -533,576 +533,303 @@ export default function ControlPage() {
   const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null);
 
   /* ================================================================ */
-  /*  RENDER                                                           */
+  /*  RENDER — LMX Console v8.12 style                                 */
   /* ================================================================ */
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)]">
+    <div className="flex h-[calc(100vh-2.5rem)]">
       {/* ============================================================ */}
-      {/*  LEFT COLUMN - Game Setup (w-72)                              */}
+      {/*  LEFT SIDEBAR — LMX-style stacked action buttons              */}
       {/* ============================================================ */}
-      <aside className="w-72 shrink-0 bg-lm-black border-r border-lm-mid flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-lm-mid">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-bold text-lm-light uppercase tracking-[0.15em]">
-              GAME SLOTS
-            </h2>
-            <span className="text-[10px] text-lm-gray">
-              {games.length} TODAY
-            </span>
-          </div>
-          {!showNewGame && (
+      <aside className="w-36 shrink-0 bg-[#0e0e1a] border-r border-lm-cyan/15 flex flex-col">
+        {/* Action buttons */}
+        <div className="flex flex-col">
+          <button
+            onClick={() => setShowNewGame(true)}
+            className="w-full text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-lm-cyan border-b border-lm-cyan/15 bg-lm-cyan/8 hover:bg-lm-cyan/15 transition-colors"
+          >
+            New Group
+          </button>
+          {selectedGameId && selectedGame?.status === "draft" && (
             <button
-              onClick={() => setShowNewGame(true)}
-              className="w-full bg-lm-green/15 border border-lm-green/40 text-lm-green text-xs font-bold uppercase tracking-wider py-2 hover:bg-lm-green/25 transition-colors"
+              onClick={() => handleGameStatus(selectedGameId, "open")}
+              className="w-full text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-lm-green border-b border-lm-cyan/15 hover:bg-lm-green/10 transition-colors"
             >
-              + NEW SESSION
+              Open Game
+            </button>
+          )}
+          {selectedGameId && selectedGame?.status === "open" && (
+            <button
+              onClick={() => handleGameStatus(selectedGameId, "in_progress")}
+              className="w-full text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-lm-yellow border-b border-lm-cyan/15 hover:bg-lm-yellow/10 transition-colors"
+            >
+              Start Game
+            </button>
+          )}
+          {selectedGameId && selectedGame?.status === "in_progress" && (
+            <button
+              onClick={() => handleGameStatus(selectedGameId, "completed")}
+              className="w-full text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-lm-blue border-b border-lm-cyan/15 hover:bg-lm-blue/10 transition-colors"
+            >
+              Complete
+            </button>
+          )}
+          {selectedGameId && (
+            <button
+              onClick={() => handleDeleteGame(selectedGameId)}
+              className="w-full text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-lm-red border-b border-lm-cyan/15 hover:bg-lm-red/10 transition-colors"
+            >
+              Delete Game
+            </button>
+          )}
+          {selectedGameId && (
+            <button
+              onClick={exportGameList}
+              className="w-full text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-lm-gray border-b border-lm-cyan/15 hover:bg-lm-cyan/8 hover:text-lm-light transition-colors"
+            >
+              Export List
             </button>
           )}
         </div>
 
-        {/* New game form */}
-        {showNewGame && (
-          <div className="p-3 border-b border-lm-mid">
-            <form
-              onSubmit={createGame}
-              className="border border-lm-green/30 bg-lm-black/50 p-3 space-y-2"
-            >
-              <div className="text-[10px] font-bold text-lm-green uppercase tracking-wider">
-                NEW SESSION
-              </div>
-
-              <div>
-                <label className="block text-[10px] uppercase text-lm-gray tracking-wider mb-0.5">
-                  TIME
-                </label>
-                <input
-                  type="time"
-                  value={ngTime}
-                  onChange={(e) => setNgTime(e.target.value)}
-                  className="w-full bg-lm-dark border border-lm-mid text-lm-light text-sm px-2 py-1 focus:outline-none focus:border-lm-green"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] uppercase text-lm-gray tracking-wider mb-0.5">
-                  GROUP LABEL
-                </label>
-                <input
-                  type="text"
-                  value={ngLabel}
-                  onChange={(e) => setNgLabel(e.target.value)}
-                  placeholder="e.g. Birthday Party"
-                  className="w-full bg-lm-dark border border-lm-mid text-lm-light text-sm px-2 py-1 placeholder:text-lm-mid focus:outline-none focus:border-lm-green"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] uppercase text-lm-gray tracking-wider mb-0.5">
-                  GAME MODE
-                </label>
-                <select
-                  value={ngGameMode}
-                  onChange={(e) => setNgGameMode(e.target.value)}
-                  className="w-full bg-lm-dark border border-lm-mid text-lm-light text-sm px-2 py-1 focus:outline-none focus:border-lm-green"
-                >
-                  {GAME_MODES.map((mode) => (
-                    <option key={mode} value={mode}>
-                      {mode}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[10px] uppercase text-lm-gray tracking-wider mb-0.5">
-                  VEST COUNT
-                </label>
-                <input
-                  type="number"
-                  value={ngVestCount}
-                  onChange={(e) => setNgVestCount(e.target.value)}
-                  min={1}
-                  max={50}
-                  className="w-full bg-lm-dark border border-lm-mid text-lm-light text-sm px-2 py-1 focus:outline-none focus:border-lm-green"
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase text-lm-gray tracking-wider">
-                  TEAM MODE
-                </span>
-                <label className="relative cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={ngTeamMode}
-                    onChange={(e) => setNgTeamMode(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-10 h-5 bg-lm-dark border border-lm-mid peer-checked:bg-lm-purple/20 peer-checked:border-lm-purple/50 transition-colors flex items-center">
-                    <div
-                      className={`w-4 h-4 transition-all ${
-                        ngTeamMode
-                          ? "translate-x-5 bg-lm-purple"
-                          : "translate-x-0.5 bg-lm-mid"
-                      }`}
-                    />
-                  </div>
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-[10px] uppercase text-lm-gray tracking-wider mb-0.5">
-                  BIRTHDAY PERSON
-                </label>
-                <input
-                  type="text"
-                  value={ngBirthdayPerson}
-                  onChange={(e) => setNgBirthdayPerson(e.target.value)}
-                  placeholder="Optional"
-                  className="w-full bg-lm-dark border border-lm-mid text-lm-light text-sm px-2 py-1 placeholder:text-lm-mid focus:outline-none focus:border-lm-yellow"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] uppercase text-lm-gray tracking-wider mb-0.5">
-                  BIRTHDAY MESSAGE
-                </label>
-                <input
-                  type="text"
-                  value={ngBirthdayMessage}
-                  onChange={(e) => setNgBirthdayMessage(e.target.value)}
-                  placeholder="e.g. Happy Birthday!"
-                  className="w-full bg-lm-dark border border-lm-mid text-lm-light text-sm px-2 py-1 placeholder:text-lm-mid focus:outline-none focus:border-lm-yellow"
-                />
-              </div>
-
-              {ngError && (
-                <div className="text-[10px] font-bold text-lm-red uppercase">
-                  {ngError}
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={ngSaving}
-                  className="flex-1 bg-lm-green/20 border border-lm-green/50 text-lm-green text-xs font-bold uppercase tracking-wider py-1.5 hover:bg-lm-green/30 disabled:opacity-50 transition-colors"
-                >
-                  {ngSaving ? "CREATING..." : "CREATE"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowNewGame(false)}
-                  className="flex-1 bg-lm-dark border border-lm-mid text-lm-gray text-xs font-bold uppercase tracking-wider py-1.5 hover:text-lm-light transition-colors"
-                >
-                  CANCEL
-                </button>
-              </div>
-            </form>
+        {/* Time slots — game list */}
+        <div className="border-t border-lm-cyan/15 mt-auto">
+          <div className="px-3 py-1.5 border-b border-lm-cyan/15">
+            <span className="text-[9px] font-bold text-lm-gray uppercase tracking-[0.15em]">
+              Time &middot; {games.length} today
+            </span>
           </div>
-        )}
-
-        {/* Game list */}
-        <div className="flex-1 overflow-y-auto">
-          {loadingGames ? (
-            <div className="p-4 text-center">
-              <span className="text-xs text-lm-gray uppercase tracking-wider animate-text-pulse">
-                LOADING...
-              </span>
-            </div>
-          ) : games.length === 0 ? (
-            <div className="p-4 text-center">
-              <span className="text-xs text-lm-mid uppercase tracking-wider">
-                NO GAMES TODAY
-              </span>
-            </div>
-          ) : (
-            games.map((game) => {
-              const isSelected = selectedGameId === game.id;
-              const playerCount = game._count?.players ?? 0;
-
-              return (
-                <button
-                  key={game.id}
-                  onClick={() => selectGame(game.id)}
-                  className={`w-full text-left p-3 border-b border-lm-mid/50 transition-colors ${
-                    isSelected
-                      ? "bg-lm-dark border-l-2 border-l-lm-green"
-                      : "hover:bg-lm-charcoal border-l-2 border-l-transparent"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span
-                      className={`text-sm font-bold ${
-                        isSelected ? "text-lm-green" : "text-lm-light"
-                      }`}
-                    >
-                      {formatTime(game.startTime)}
-                    </span>
-                    <StatusBadge status={game.status} />
-                  </div>
-
-                  {/* Badges */}
-                  <div className="flex items-center gap-1 flex-wrap mb-1">
-                    {game.showGameMode && (
-                      <span className="text-[9px] font-bold text-lm-cyan border border-lm-cyan/40 px-1.5 py-0 rounded-full">
-                        {game.gameMode}
+          <div className="overflow-y-auto max-h-[calc(100vh-20rem)]">
+            {loadingGames ? (
+              <div className="px-3 py-4 text-center">
+                <span className="text-[10px] text-lm-gray uppercase tracking-wider animate-text-pulse">
+                  Loading...
+                </span>
+              </div>
+            ) : games.length === 0 ? (
+              <div className="px-3 py-4 text-center">
+                <span className="text-[10px] text-lm-mid uppercase">No games</span>
+              </div>
+            ) : (
+              games.map((game) => {
+                const isSelected = selectedGameId === game.id;
+                const playerCount = game._count?.players ?? 0;
+                return (
+                  <button
+                    key={game.id}
+                    onClick={() => selectGame(game.id)}
+                    className={`w-full text-left px-3 py-2 border-b border-lm-cyan/10 transition-colors ${
+                      isSelected
+                        ? "bg-lm-cyan/12 border-l-2 border-l-lm-cyan"
+                        : "hover:bg-[#14142a] border-l-2 border-l-transparent"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs font-bold ${isSelected ? "text-lm-cyan" : "text-lm-light"}`}>
+                        {formatTime(game.startTime)}
                       </span>
-                    )}
-                    {game.isTeamMode && (
-                      <span className="text-[9px] font-bold text-lm-purple border border-lm-purple/40 px-1.5 py-0 rounded-full">
-                        TEAM
-                      </span>
-                    )}
-                    {game.birthdayPerson && (
-                      <span className="text-[9px] font-bold text-lm-yellow">
-                        &#9733;
-                      </span>
-                    )}
-                  </div>
-
-                  {game.groupLabel && (
-                    <div className="text-[11px] text-lm-gray truncate mb-1">
-                      {game.groupLabel}
+                      <StatusBadge status={game.status} />
                     </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-lm-mid uppercase">
-                      {playerCount} PLAYER{playerCount !== 1 ? "S" : ""}
-                    </span>
-                    <span className="text-[10px] text-lm-mid">
-                      {game.vestCount} VESTS
-                    </span>
-                  </div>
-                </button>
-              );
-            })
-          )}
+                    {game.groupLabel && (
+                      <div className="text-[9px] text-lm-gray truncate mt-0.5">
+                        {game.groupLabel}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {game.showGameMode && (
+                        <span className="text-[8px] font-bold text-lm-cyan">{game.gameMode}</span>
+                      )}
+                      {game.isTeamMode && (
+                        <span className="text-[8px] font-bold text-lm-purple">TEAM</span>
+                      )}
+                      {game.birthdayPerson && (
+                        <span className="text-[8px] text-lm-yellow">&#9733;</span>
+                      )}
+                      <span className="text-[8px] text-lm-mid ml-auto">{playerCount}P</span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
         </div>
       </aside>
 
       {/* ============================================================ */}
-      {/*  CENTER COLUMN - Player Management (flex-1)                   */}
+      {/*  CENTER — Player Grid (LMX Packs-style)                       */}
       {/* ============================================================ */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden bg-[#0a0a16]">
         {!selectedGameId ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <div className="text-lm-mid text-4xl mb-4">&#9654;</div>
-              <p className="text-sm text-lm-gray uppercase tracking-wider">
-                SELECT A GAME TO VIEW DETAILS
+              <div className="text-lm-mid text-2xl mb-3">&#9654;</div>
+              <p className="text-[11px] text-lm-gray uppercase tracking-wider">
+                Select a game from the left panel
               </p>
             </div>
           </div>
         ) : (
           <>
-            {/* Game header */}
-            <div className="bg-lm-black border-b border-lm-mid p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-4">
-                  <h2 className="text-lg font-bold text-lm-light uppercase tracking-wider">
-                    {selectedGame
-                      ? formatTime(selectedGame.startTime)
-                      : "LOADING..."}
-                  </h2>
-                  {selectedGame?.groupLabel && (
-                    <span className="text-sm text-lm-gray">
-                      {selectedGame.groupLabel}
-                    </span>
-                  )}
-                  {selectedGame && (
-                    <StatusBadge status={selectedGame.status} />
-                  )}
-                  {selectedGame?.birthdayPerson && (
-                    <span className="text-xs text-lm-yellow font-bold">
-                      &#9733; {selectedGame.birthdayPerson}
-                    </span>
-                  )}
-                </div>
+            {/* Game header bar */}
+            <div className="bg-[#0e0e1a] border-b border-lm-cyan/20 px-3 py-2 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-bold text-lm-light">
+                  {selectedGame ? formatTime(selectedGame.startTime) : "..."}
+                </span>
+                {selectedGame?.groupLabel && (
+                  <span className="text-[11px] text-lm-gray">{selectedGame.groupLabel}</span>
+                )}
+                {selectedGame && <StatusBadge status={selectedGame.status} />}
+                {selectedGame?.showGameMode && (
+                  <span className="text-[9px] font-bold text-lm-cyan border border-lm-cyan/30 px-1.5 py-0.5">
+                    {selectedGame.gameMode}
+                  </span>
+                )}
+                {selectedGame?.isTeamMode && (
+                  <span className="text-[9px] font-bold text-lm-purple border border-lm-purple/30 px-1.5 py-0.5">
+                    TEAM
+                  </span>
+                )}
+                {selectedGame?.birthdayPerson && (
+                  <span className="text-[10px] text-lm-yellow font-bold">
+                    &#9733; {selectedGame.birthdayPerson}
+                  </span>
+                )}
               </div>
-
-              {/* Status controls + stats */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {selectedGame?.status === "draft" && (
-                    <button
-                      onClick={() =>
-                        handleGameStatus(selectedGameId, "open")
-                      }
-                      className="bg-lm-green/15 border border-lm-green/40 text-lm-green text-[10px] font-bold uppercase px-3 py-1 hover:bg-lm-green/25 transition-colors"
-                    >
-                      OPEN FOR PLAYERS
-                    </button>
-                  )}
-                  {selectedGame?.status === "open" && (
-                    <button
-                      onClick={() =>
-                        handleGameStatus(selectedGameId, "in_progress")
-                      }
-                      className="bg-lm-yellow/15 border border-lm-yellow/40 text-lm-yellow text-[10px] font-bold uppercase px-3 py-1 hover:bg-lm-yellow/25 transition-colors"
-                    >
-                      START GAME
-                    </button>
-                  )}
-                  {selectedGame?.status === "in_progress" && (
-                    <button
-                      onClick={() =>
-                        handleGameStatus(selectedGameId, "completed")
-                      }
-                      className="bg-lm-blue/15 border border-lm-blue/40 text-lm-blue text-[10px] font-bold uppercase px-3 py-1 hover:bg-lm-blue/25 transition-colors"
-                    >
-                      COMPLETE
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleDeleteGame(selectedGameId)}
-                    className="bg-lm-red/10 border border-lm-red/30 text-lm-red text-[10px] font-bold uppercase px-3 py-1 hover:bg-lm-red/20 transition-colors"
-                  >
-                    DELETE
-                  </button>
-                </div>
-                <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-wider">
-                  <span className="text-lm-light">{stats.total} TOTAL</span>
-                  <span className="text-lm-green">{stats.approved} OK</span>
-                  <span className="text-lm-yellow">
-                    {stats.pending} PENDING
-                  </span>
-                  <span className="text-lm-gray">
-                    {stats.waiting} WAITING
-                  </span>
-                </div>
+              <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider">
+                <span className="text-lm-light">{stats.total}</span>
+                <span className="text-lm-green">{stats.approved} OK</span>
+                <span className="text-lm-yellow">{stats.pending} PEND</span>
+                <span className="text-lm-gray">{stats.waiting} WAIT</span>
               </div>
             </div>
 
-            {/* Quick add + Paste add */}
-            <div className="bg-lm-charcoal border-b border-lm-mid p-3 flex items-start gap-4">
-              {/* Quick add */}
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={quickName}
-                  onChange={(e) => setQuickName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") quickAddPlayer();
-                  }}
-                  placeholder="ADD NAME..."
-                  className="bg-lm-dark border border-lm-mid text-lm-light text-xs px-3 py-1.5 w-48 placeholder:text-lm-mid focus:outline-none focus:border-lm-green uppercase"
-                />
-                <button
-                  onClick={quickAddPlayer}
-                  disabled={!quickName.trim()}
-                  className="bg-lm-green/15 border border-lm-green/40 text-lm-green text-[10px] font-bold uppercase px-3 py-1.5 hover:bg-lm-green/25 disabled:opacity-50 transition-colors"
-                >
-                  ADD
-                </button>
-              </div>
-
-              {/* Paste add */}
-              <div className="flex items-end gap-2">
-                <textarea
-                  value={pasteText}
-                  onChange={(e) => setPasteText(e.target.value)}
-                  placeholder="PASTE NAMES (ONE PER LINE)..."
-                  rows={2}
-                  className="bg-lm-dark border border-lm-mid text-lm-light text-xs px-3 py-1.5 w-64 placeholder:text-lm-mid focus:outline-none focus:border-lm-blue resize-none"
-                />
-                <button
-                  onClick={pasteAddPlayers}
-                  disabled={pasteLineCount === 0}
-                  className="bg-lm-blue/15 border border-lm-blue/40 text-lm-blue text-[10px] font-bold uppercase px-3 py-1.5 hover:bg-lm-blue/25 disabled:opacity-50 transition-colors whitespace-nowrap"
-                >
-                  LOAD {pasteLineCount} NAME{pasteLineCount !== 1 ? "S" : ""}
-                </button>
-              </div>
+            {/* Quick add bar */}
+            <div className="bg-[#0e0e1a] border-b border-lm-cyan/15 px-3 py-1.5 flex items-center gap-3">
+              <input
+                type="text"
+                value={quickName}
+                onChange={(e) => setQuickName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") quickAddPlayer(); }}
+                placeholder="ADD NAME..."
+                className="bg-[#0a0a16] border border-lm-cyan/20 text-lm-light text-[11px] px-2 py-1 w-44 placeholder:text-lm-mid focus:outline-none focus:border-lm-cyan/50 uppercase"
+              />
+              <button
+                onClick={quickAddPlayer}
+                disabled={!quickName.trim()}
+                className="border border-lm-cyan/25 text-lm-green text-[10px] font-bold uppercase px-2.5 py-1 hover:bg-lm-green/10 disabled:opacity-40 transition-colors"
+              >
+                Add
+              </button>
+              <div className="w-px h-5 bg-lm-cyan/15" />
+              <textarea
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                placeholder="PASTE NAMES..."
+                rows={1}
+                className="bg-[#0a0a16] border border-lm-cyan/20 text-lm-light text-[11px] px-2 py-1 w-52 placeholder:text-lm-mid focus:outline-none focus:border-lm-cyan/50 resize-none"
+              />
+              <button
+                onClick={pasteAddPlayers}
+                disabled={pasteLineCount === 0}
+                className="border border-lm-cyan/25 text-lm-blue text-[10px] font-bold uppercase px-2.5 py-1 hover:bg-lm-blue/10 disabled:opacity-40 transition-colors whitespace-nowrap"
+              >
+                Load {pasteLineCount}
+              </button>
             </div>
 
-            {/* Player roster */}
+            {/* Player roster — LMX grid style */}
             <div className="flex-1 overflow-y-auto">
               {loadingPlayers ? (
-                <div className="p-8 text-center">
-                  <span className="text-xs text-lm-gray uppercase tracking-wider animate-text-pulse">
-                    LOADING ROSTER...
+                <div className="p-6 text-center">
+                  <span className="text-[11px] text-lm-gray uppercase tracking-wider animate-text-pulse">
+                    Loading roster...
                   </span>
                 </div>
               ) : players.length === 0 ? (
-                <div className="p-8 text-center">
-                  <p className="text-sm text-lm-mid uppercase tracking-wider mb-2">
-                    NO PLAYERS YET
-                  </p>
-                  <p className="text-xs text-lm-mid">
-                    Use quick add or paste a list above
-                  </p>
+                <div className="p-6 text-center">
+                  <p className="text-[11px] text-lm-mid uppercase tracking-wider">No players yet</p>
                 </div>
               ) : (
-                <table className="w-full">
-                  <thead className="sticky top-0 bg-lm-charcoal z-10">
-                    <tr className="border-b border-lm-mid">
-                      <th className="text-[10px] font-bold text-lm-gray uppercase tracking-wider text-left px-3 py-2 w-8">
-                        #
-                      </th>
-                      <th className="text-[10px] font-bold text-lm-gray uppercase tracking-wider text-left px-3 py-2 w-14">
-                        VEST
-                      </th>
-                      <th className="text-[10px] font-bold text-lm-gray uppercase tracking-wider text-left px-3 py-2">
-                        NAME
-                      </th>
-                      <th className="text-[10px] font-bold text-lm-gray uppercase tracking-wider text-left px-3 py-2">
-                        CODENAME
-                      </th>
-                      <th className="text-[10px] font-bold text-lm-gray uppercase tracking-wider text-left px-3 py-2 w-16">
-                        TEAM
-                      </th>
-                      <th className="text-[10px] font-bold text-lm-gray uppercase tracking-wider text-left px-3 py-2 w-10">
-                        BD
-                      </th>
-                      <th className="text-[10px] font-bold text-lm-gray uppercase tracking-wider text-left px-3 py-2 w-20">
-                        STATUS
-                      </th>
-                      <th className="text-[10px] font-bold text-lm-gray uppercase tracking-wider text-left px-3 py-2">
-                        ACTIONS
-                      </th>
+                <table className="w-full border-collapse">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="bg-[#12122a]">
+                      <th className="text-[9px] font-bold text-lm-cyan/70 uppercase tracking-wider text-left px-2 py-1.5 border border-lm-cyan/20 w-8">#</th>
+                      <th className="text-[9px] font-bold text-lm-cyan/70 uppercase tracking-wider text-left px-2 py-1.5 border border-lm-cyan/20 w-12">Vest</th>
+                      <th className="text-[9px] font-bold text-lm-cyan/70 uppercase tracking-wider text-left px-2 py-1.5 border border-lm-cyan/20">Name</th>
+                      <th className="text-[9px] font-bold text-lm-cyan/70 uppercase tracking-wider text-left px-2 py-1.5 border border-lm-cyan/20">Codename</th>
+                      <th className="text-[9px] font-bold text-lm-cyan/70 uppercase tracking-wider text-left px-2 py-1.5 border border-lm-cyan/20 w-14">Team</th>
+                      <th className="text-[9px] font-bold text-lm-cyan/70 uppercase tracking-wider text-center px-2 py-1.5 border border-lm-cyan/20 w-8">BD</th>
+                      <th className="text-[9px] font-bold text-lm-cyan/70 uppercase tracking-wider text-left px-2 py-1.5 border border-lm-cyan/20 w-20">Status</th>
+                      <th className="text-[9px] font-bold text-lm-cyan/70 uppercase tracking-wider text-left px-2 py-1.5 border border-lm-cyan/20 w-28">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {players.map((player, idx) => (
                       <tr
                         key={player.id}
-                        className={`border-b border-lm-mid/30 hover:bg-lm-dark/50 transition-colors ${
+                        className={`hover:bg-[#14142a] transition-colors ${
                           player.isBirthday ? "bg-lm-yellow/5" : ""
                         }`}
                       >
-                        <td className="px-3 py-1.5 text-xs text-lm-mid">
+                        <td className="px-2 py-1 text-[11px] text-lm-mid border border-lm-cyan/12">
                           {idx + 1}
                         </td>
-                        <td className="px-3 py-1.5 text-xs text-lm-yellow font-bold font-mono">
-                          {player.vestNumber ?? (
-                            <span className="text-lm-mid">--</span>
-                          )}
+                        <td className="px-2 py-1 text-[11px] text-lm-yellow font-bold border border-lm-cyan/12">
+                          {player.vestNumber ?? <span className="text-lm-mid">--</span>}
                         </td>
-                        <td className="px-3 py-1.5 text-xs text-lm-light font-medium">
+                        <td className="px-2 py-1 text-[11px] text-lm-light border border-lm-cyan/12">
                           {player.realName}
-                          {player.isWalkIn && (
-                            <span className="ml-1 text-[9px] text-lm-purple">
-                              WI
-                            </span>
-                          )}
+                          {player.isWalkIn && <span className="ml-1 text-[8px] text-lm-purple">WI</span>}
                         </td>
-                        <td className="px-3 py-1.5">
+                        <td className="px-2 py-1 border border-lm-cyan/12">
                           {editingPlayerId === player.id ? (
                             <InlineEdit
                               player={player}
                               gameId={selectedGameId}
-                              onSaved={() => {
-                                setEditingPlayerId(null);
-                                fetchPlayers(selectedGameId);
-                              }}
+                              onSaved={() => { setEditingPlayerId(null); fetchPlayers(selectedGameId); }}
                             />
                           ) : (
-                            <span className="text-xs text-lm-cyan font-bold uppercase tracking-wider">
-                              {player.codename || (
-                                <span className="text-lm-mid italic normal-case tracking-normal font-normal">
-                                  awaiting...
-                                </span>
-                              )}
+                            <span className="text-[11px] text-lm-cyan font-bold uppercase tracking-wider">
+                              {player.codename || <span className="text-lm-mid font-normal normal-case tracking-normal italic">awaiting...</span>}
                             </span>
                           )}
                         </td>
-                        <td className="px-3 py-1.5">
+                        <td className="px-2 py-1 border border-lm-cyan/12">
                           {player.team ? (
-                            <span
-                              className={`text-[10px] font-bold ${
-                                player.team === "RED"
-                                  ? "text-lm-red"
-                                  : "text-lm-blue"
-                              }`}
-                            >
+                            <span className={`text-[10px] font-bold ${player.team === "RED" ? "text-lm-red" : "text-lm-blue"}`}>
                               {player.team}
                             </span>
                           ) : selectedGame?.isTeamMode ? (
-                            <div className="flex gap-0.5">
-                              <button
-                                onClick={() =>
-                                  patchPlayer(player.id, { team: "RED" })
-                                }
-                                className="text-[9px] text-lm-red border border-lm-red/30 px-1 hover:bg-lm-red/10"
-                              >
-                                R
-                              </button>
-                              <button
-                                onClick={() =>
-                                  patchPlayer(player.id, { team: "BLUE" })
-                                }
-                                className="text-[9px] text-lm-blue border border-lm-blue/30 px-1 hover:bg-lm-blue/10"
-                              >
-                                B
-                              </button>
+                            <div className="flex gap-px">
+                              <button onClick={() => patchPlayer(player.id, { team: "RED" })} className="text-[9px] text-lm-red border border-lm-red/30 px-1 hover:bg-lm-red/10">R</button>
+                              <button onClick={() => patchPlayer(player.id, { team: "BLUE" })} className="text-[9px] text-lm-blue border border-lm-blue/30 px-1 hover:bg-lm-blue/10">B</button>
                             </div>
                           ) : (
-                            <span className="text-lm-mid text-[10px]">
-                              --
-                            </span>
+                            <span className="text-lm-mid text-[10px]">--</span>
                           )}
                         </td>
-                        <td className="px-3 py-1.5">
+                        <td className="px-2 py-1 text-center border border-lm-cyan/12">
                           <button
-                            onClick={() =>
-                              patchPlayer(player.id, {
-                                isBirthday: !player.isBirthday,
-                              })
-                            }
-                            className={`text-sm ${
-                              player.isBirthday
-                                ? "text-lm-yellow"
-                                : "text-lm-mid hover:text-lm-yellow"
-                            }`}
-                            title="Toggle birthday"
+                            onClick={() => patchPlayer(player.id, { isBirthday: !player.isBirthday })}
+                            className={`text-sm leading-none ${player.isBirthday ? "text-lm-yellow" : "text-lm-mid hover:text-lm-yellow"}`}
                           >
-                            {player.isBirthday ? "★" : "☆"}
+                            {player.isBirthday ? "\u2605" : "\u2606"}
                           </button>
                         </td>
-                        <td className="px-3 py-1.5">
+                        <td className="px-2 py-1 border border-lm-cyan/12">
                           <StatusBadge status={player.status} />
                         </td>
-                        <td className="px-3 py-1.5">
-                          <div className="flex items-center gap-1">
+                        <td className="px-2 py-1 border border-lm-cyan/12">
+                          <div className="flex items-center gap-px">
                             {player.status !== "approved" && (
-                              <button
-                                onClick={() =>
-                                  patchPlayer(player.id, {
-                                    status: "approved",
-                                  })
-                                }
-                                className="bg-lm-green/15 border border-lm-green/40 text-lm-green text-[10px] font-bold uppercase px-1.5 py-0.5 hover:bg-lm-green/25 transition-colors"
-                              >
-                                OK
-                              </button>
+                              <button onClick={() => patchPlayer(player.id, { status: "approved" })} className="border border-lm-green/30 text-lm-green text-[9px] font-bold uppercase px-1.5 py-0.5 hover:bg-lm-green/15">OK</button>
                             )}
                             {player.status !== "rejected" && (
-                              <button
-                                onClick={() =>
-                                  patchPlayer(player.id, {
-                                    status: "rejected",
-                                  })
-                                }
-                                className="bg-lm-red/15 border border-lm-red/40 text-lm-red text-[10px] font-bold uppercase px-1.5 py-0.5 hover:bg-lm-red/25 transition-colors"
-                              >
-                                X
-                              </button>
+                              <button onClick={() => patchPlayer(player.id, { status: "rejected" })} className="border border-lm-red/30 text-lm-red text-[9px] font-bold uppercase px-1.5 py-0.5 hover:bg-lm-red/15">X</button>
                             )}
-                            <button
-                              onClick={() => setEditingPlayerId(player.id)}
-                              className="bg-lm-blue/15 border border-lm-blue/40 text-lm-blue text-[10px] font-bold uppercase px-1.5 py-0.5 hover:bg-lm-blue/25 transition-colors"
-                            >
-                              ED
-                            </button>
-                            <button
-                              onClick={() => removePlayer(player.id)}
-                              className="text-[10px] font-bold text-lm-mid hover:text-lm-red transition-colors px-1"
-                              title="Remove player"
-                            >
-                              DEL
-                            </button>
+                            <button onClick={() => setEditingPlayerId(player.id)} className="border border-lm-blue/30 text-lm-blue text-[9px] font-bold uppercase px-1.5 py-0.5 hover:bg-lm-blue/15">ED</button>
+                            <button onClick={() => removePlayer(player.id)} className="text-[9px] font-bold text-lm-mid hover:text-lm-red px-1">DEL</button>
                           </div>
                         </td>
                       </tr>
@@ -1111,60 +838,48 @@ export default function ControlPage() {
                 </table>
               )}
 
-              {/* Walk-in pool section */}
+              {/* Pagination-style footer like LMX */}
+              {players.length > 0 && (
+                <div className="px-3 py-1.5 border-t border-lm-cyan/15 text-right">
+                  <span className="text-[9px] text-lm-gray font-bold">
+                    1-{players.length} &rarr;
+                  </span>
+                </div>
+              )}
+
+              {/* Walk-in pool */}
               {selectedGameId && (
-                <div className="border-t border-lm-mid p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-[10px] font-bold text-lm-purple uppercase tracking-[0.15em]">
-                      WALK-IN POOL
-                    </h3>
-                    <span className="text-[10px] text-lm-mid">
-                      {walkInPool.length} AVAILABLE
+                <div className="border-t border-lm-cyan/20 px-3 py-2">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[9px] font-bold text-lm-purple uppercase tracking-[0.15em]">
+                      Walk-In Pool
                     </span>
+                    <span className="text-[9px] text-lm-mid">{walkInPool.length} available</span>
                   </div>
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-1.5">
                     <input
                       type="text"
                       value={walkInName}
                       onChange={(e) => setWalkInName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") addToWalkInPool();
-                      }}
+                      onKeyDown={(e) => { if (e.key === "Enter") addToWalkInPool(); }}
                       placeholder="ADD TO POOL..."
-                      className="bg-lm-dark border border-lm-mid text-lm-light text-xs px-2 py-1 w-40 placeholder:text-lm-mid focus:outline-none focus:border-lm-purple"
+                      className="bg-[#0a0a16] border border-lm-cyan/20 text-lm-light text-[11px] px-2 py-1 w-36 placeholder:text-lm-mid focus:outline-none focus:border-lm-purple/50"
                     />
                     <button
                       onClick={addToWalkInPool}
                       disabled={!walkInName.trim()}
-                      className="bg-lm-purple/15 border border-lm-purple/40 text-lm-purple text-[10px] font-bold uppercase px-2 py-1 hover:bg-lm-purple/25 disabled:opacity-50 transition-colors"
+                      className="border border-lm-purple/30 text-lm-purple text-[9px] font-bold uppercase px-2 py-1 hover:bg-lm-purple/10 disabled:opacity-40"
                     >
-                      ADD
+                      Add
                     </button>
                   </div>
                   {walkInPool.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {walkInPool.map((entry) => (
-                        <div
-                          key={entry.id}
-                          className="inline-flex items-center gap-1.5 bg-lm-purple/10 border border-lm-purple/30 px-2 py-1"
-                        >
-                          <span className="text-xs font-bold text-lm-purple">
-                            {entry.realName}
-                          </span>
-                          <button
-                            onClick={() => assignWalkInToGame(entry)}
-                            className="text-[9px] text-lm-green hover:text-lm-cyan font-bold"
-                            title="Assign to game"
-                          >
-                            +G
-                          </button>
-                          <button
-                            onClick={() => removeFromWalkInPool(entry.id)}
-                            className="text-[9px] text-lm-mid hover:text-lm-red font-bold"
-                            title="Remove"
-                          >
-                            X
-                          </button>
+                        <div key={entry.id} className="inline-flex items-center gap-1 border border-lm-purple/25 px-1.5 py-0.5 bg-lm-purple/5">
+                          <span className="text-[10px] font-bold text-lm-purple">{entry.realName}</span>
+                          <button onClick={() => assignWalkInToGame(entry)} className="text-[8px] text-lm-green hover:text-lm-cyan font-bold" title="Assign to game">+G</button>
+                          <button onClick={() => removeFromWalkInPool(entry.id)} className="text-[8px] text-lm-mid hover:text-lm-red font-bold" title="Remove">X</button>
                         </div>
                       ))}
                     </div>
@@ -1177,80 +892,87 @@ export default function ControlPage() {
       </div>
 
       {/* ============================================================ */}
-      {/*  RIGHT COLUMN - Live Feed (w-72)                              */}
+      {/*  RIGHT PANEL — Game info + Live Feed                          */}
       {/* ============================================================ */}
-      <aside className="w-72 shrink-0 bg-lm-black border-l border-lm-mid flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-lm-mid flex items-center justify-between">
-          <h2 className="text-xs font-bold text-lm-light uppercase tracking-[0.15em]">
-            LIVE FEED
-          </h2>
-          {selectedGameId && (
-            <button
-              onClick={exportGameList}
-              className="bg-lm-cyan/15 border border-lm-cyan/40 text-lm-cyan text-[9px] font-bold uppercase px-2 py-0.5 hover:bg-lm-cyan/25 transition-colors"
-            >
-              EXPORT LIST
-            </button>
+      <aside className="w-56 shrink-0 bg-[#0e0e1a] border-l border-lm-cyan/15 flex flex-col overflow-hidden">
+        {/* Game info card */}
+        <div className="px-3 py-2 border-b border-lm-cyan/15">
+          <div className="text-[9px] font-bold text-lm-gray uppercase tracking-[0.15em] mb-1.5">
+            Game
+          </div>
+          {selectedGame ? (
+            <div className="space-y-1">
+              <div className="text-xs font-bold text-lm-light uppercase">
+                {selectedGame.groupLabel || formatTime(selectedGame.startTime)}
+              </div>
+              {selectedGame.showGameMode && (
+                <div className="text-[10px] text-lm-cyan">{selectedGame.gameMode}</div>
+              )}
+              <div className="text-[9px] text-lm-gray">
+                {selectedGame.vestCount} Vests &middot; {stats.total} Players
+              </div>
+              {selectedGame.birthdayPerson && (
+                <div className="text-[9px] text-lm-yellow font-bold">
+                  &#9733; {selectedGame.birthdayPerson}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-[10px] text-lm-mid italic">No game selected</div>
           )}
+        </div>
+
+        {/* Player summary (like LMX right panel player list) */}
+        {selectedGame && players.length > 0 && (
+          <div className="px-3 py-2 border-b border-lm-cyan/15 max-h-48 overflow-y-auto">
+            <div className="text-[9px] font-bold text-lm-gray uppercase tracking-[0.15em] mb-1">
+              Packs of
+            </div>
+            {players.map((p, i) => (
+              <div key={p.id} className="flex items-center gap-1.5 py-0.5">
+                <span className="text-[9px] text-lm-mid w-4 text-right">{i + 1}</span>
+                <span className="text-[9px] text-lm-mid">&ndash;</span>
+                <span className="text-[10px] text-lm-light font-bold uppercase truncate">
+                  {p.codename || p.realName}
+                </span>
+                {p.vestNumber && (
+                  <span className="text-[8px] text-lm-yellow ml-auto">({p.vestNumber})</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Live feed */}
+        <div className="px-3 py-1.5 border-b border-lm-cyan/15 flex items-center justify-between">
+          <span className="text-[9px] font-bold text-lm-gray uppercase tracking-[0.15em]">
+            Live Feed
+          </span>
         </div>
 
         <div className="flex-1 overflow-y-auto">
           {/* Pending approvals */}
           {pendingFeed.length > 0 && (
-            <div className="border-b border-lm-yellow/30">
-              <div className="px-3 py-1.5 bg-lm-yellow/10">
-                <span className="text-[9px] font-bold text-lm-yellow uppercase tracking-wider">
-                  PENDING APPROVAL ({pendingFeed.length})
+            <div className="border-b border-lm-yellow/20">
+              <div className="px-3 py-1 bg-lm-yellow/8">
+                <span className="text-[8px] font-bold text-lm-yellow uppercase tracking-wider">
+                  Pending ({pendingFeed.length})
                 </span>
               </div>
               {pendingFeed.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="px-3 py-2 border-b border-lm-mid/30"
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-lm-light font-medium">
-                      {entry.realName}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => approveFeedEntry(entry)}
-                        className="bg-lm-green/20 text-lm-green text-[10px] font-bold px-2 py-0.5 hover:bg-lm-green/30"
-                      >
-                        OK
-                      </button>
-                      <button
-                        onClick={() => rejectFeedEntry(entry)}
-                        className="bg-lm-red/20 text-lm-red text-[10px] font-bold px-2 py-0.5 hover:bg-lm-red/30"
-                      >
-                        X
-                      </button>
+                <div key={entry.id} className="px-3 py-1.5 border-b border-lm-cyan/10">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="text-[10px] text-lm-light">{entry.realName}</span>
+                    <div className="flex items-center gap-px">
+                      <button onClick={() => approveFeedEntry(entry)} className="border border-lm-green/30 text-lm-green text-[9px] font-bold px-1.5 py-0.5 hover:bg-lm-green/15">OK</button>
+                      <button onClick={() => rejectFeedEntry(entry)} className="border border-lm-red/30 text-lm-red text-[9px] font-bold px-1.5 py-0.5 hover:bg-lm-red/15">X</button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-lm-cyan uppercase">
-                      {entry.codename}
-                    </span>
-                    {entry.vestNumber && (
-                      <span className="text-[10px] text-lm-yellow font-bold">
-                        V{entry.vestNumber}
-                      </span>
-                    )}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold text-lm-cyan uppercase">{entry.codename}</span>
+                    {entry.vestNumber && <span className="text-[9px] text-lm-yellow font-bold">V{entry.vestNumber}</span>}
                     {entry.team && (
-                      <span
-                        className={`text-[9px] font-bold ${
-                          entry.team === "RED"
-                            ? "text-lm-red"
-                            : "text-lm-blue"
-                        }`}
-                      >
-                        {entry.team}
-                      </span>
-                    )}
-                    {entry.isBirthday && (
-                      <span className="text-[10px] text-lm-yellow">
-                        &#9733;
-                      </span>
+                      <span className={`text-[8px] font-bold ${entry.team === "RED" ? "text-lm-red" : "text-lm-blue"}`}>{entry.team}</span>
                     )}
                   </div>
                 </div>
@@ -1259,62 +981,106 @@ export default function ControlPage() {
           )}
 
           {/* Resolved entries */}
-          {resolvedFeed.length > 0 && (
-            <div>
-              {resolvedFeed.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="px-3 py-2 border-b border-lm-mid/20"
-                >
-                  <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-[11px] text-lm-gray">
-                      {entry.realName}
-                    </span>
-                    <StatusBadge status={entry.status} />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-lm-cyan uppercase">
-                      {entry.codename}
-                    </span>
-                    {entry.vestNumber && (
-                      <span className="text-[10px] text-lm-yellow font-bold">
-                        V{entry.vestNumber}
-                      </span>
-                    )}
-                    {entry.team && (
-                      <span
-                        className={`text-[9px] font-bold ${
-                          entry.team === "RED"
-                            ? "text-lm-red"
-                            : "text-lm-blue"
-                        }`}
-                      >
-                        {entry.team}
-                      </span>
-                    )}
-                    {entry.isBirthday && (
-                      <span className="text-[10px] text-lm-yellow">
-                        &#9733;
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
+          {resolvedFeed.map((entry) => (
+            <div key={entry.id} className="px-3 py-1.5 border-b border-lm-cyan/8">
+              <div className="flex items-center justify-between mb-0.5">
+                <span className="text-[10px] text-lm-gray">{entry.realName}</span>
+                <StatusBadge status={entry.status} />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-lm-cyan uppercase">{entry.codename}</span>
+                {entry.vestNumber && <span className="text-[9px] text-lm-yellow font-bold">V{entry.vestNumber}</span>}
+                {entry.team && (
+                  <span className={`text-[8px] font-bold ${entry.team === "RED" ? "text-lm-red" : "text-lm-blue"}`}>{entry.team}</span>
+                )}
+              </div>
             </div>
-          )}
+          ))}
 
           {feed.length === 0 && (
-            <div className="p-4 text-center">
-              <p className="text-xs text-lm-mid uppercase tracking-wider">
-                NO SUBMISSIONS YET
-              </p>
-              <p className="text-[10px] text-lm-mid mt-1">
-                Codenames will appear here in real-time
-              </p>
+            <div className="px-3 py-4 text-center">
+              <p className="text-[10px] text-lm-mid uppercase tracking-wider">No submissions yet</p>
             </div>
           )}
         </div>
       </aside>
+
+      {/* ============================================================ */}
+      {/*  NEW GAME MODAL (overlays when showNewGame is true)            */}
+      {/* ============================================================ */}
+      {showNewGame && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <form
+            onSubmit={createGame}
+            className="bg-[#12122a] border border-lm-cyan/30 p-4 w-80 space-y-2"
+          >
+            <div className="text-[10px] font-bold text-lm-cyan uppercase tracking-wider mb-2">
+              New Session
+            </div>
+
+            <div>
+              <label className="block text-[9px] uppercase text-lm-gray tracking-wider mb-0.5">Time</label>
+              <input type="time" value={ngTime} onChange={(e) => setNgTime(e.target.value)}
+                className="w-full bg-[#0a0a16] border border-lm-cyan/20 text-lm-light text-sm px-2 py-1 focus:outline-none focus:border-lm-cyan/50" />
+            </div>
+
+            <div>
+              <label className="block text-[9px] uppercase text-lm-gray tracking-wider mb-0.5">Group Label</label>
+              <input type="text" value={ngLabel} onChange={(e) => setNgLabel(e.target.value)} placeholder="e.g. Birthday Party"
+                className="w-full bg-[#0a0a16] border border-lm-cyan/20 text-lm-light text-sm px-2 py-1 placeholder:text-lm-mid focus:outline-none focus:border-lm-cyan/50" />
+            </div>
+
+            <div>
+              <label className="block text-[9px] uppercase text-lm-gray tracking-wider mb-0.5">Game Mode</label>
+              <select value={ngGameMode} onChange={(e) => setNgGameMode(e.target.value)}
+                className="w-full bg-[#0a0a16] border border-lm-cyan/20 text-lm-light text-sm px-2 py-1 focus:outline-none focus:border-lm-cyan/50">
+                {GAME_MODES.map((mode) => <option key={mode} value={mode}>{mode}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[9px] uppercase text-lm-gray tracking-wider mb-0.5">Vest Count</label>
+              <input type="number" value={ngVestCount} onChange={(e) => setNgVestCount(e.target.value)} min={1} max={50}
+                className="w-full bg-[#0a0a16] border border-lm-cyan/20 text-lm-light text-sm px-2 py-1 focus:outline-none focus:border-lm-cyan/50" />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] uppercase text-lm-gray tracking-wider">Team Mode</span>
+              <label className="relative cursor-pointer">
+                <input type="checkbox" checked={ngTeamMode} onChange={(e) => setNgTeamMode(e.target.checked)} className="sr-only peer" />
+                <div className="w-9 h-4 bg-[#0a0a16] border border-lm-cyan/20 peer-checked:bg-lm-purple/20 peer-checked:border-lm-purple/40 flex items-center">
+                  <div className={`w-3 h-3 transition-all ${ngTeamMode ? "translate-x-5 bg-lm-purple" : "translate-x-0.5 bg-lm-mid"}`} />
+                </div>
+              </label>
+            </div>
+
+            <div>
+              <label className="block text-[9px] uppercase text-lm-gray tracking-wider mb-0.5">Birthday Person</label>
+              <input type="text" value={ngBirthdayPerson} onChange={(e) => setNgBirthdayPerson(e.target.value)} placeholder="Optional"
+                className="w-full bg-[#0a0a16] border border-lm-cyan/20 text-lm-light text-sm px-2 py-1 placeholder:text-lm-mid focus:outline-none focus:border-lm-yellow/50" />
+            </div>
+
+            <div>
+              <label className="block text-[9px] uppercase text-lm-gray tracking-wider mb-0.5">Birthday Message</label>
+              <input type="text" value={ngBirthdayMessage} onChange={(e) => setNgBirthdayMessage(e.target.value)} placeholder="e.g. Happy Birthday!"
+                className="w-full bg-[#0a0a16] border border-lm-cyan/20 text-lm-light text-sm px-2 py-1 placeholder:text-lm-mid focus:outline-none focus:border-lm-yellow/50" />
+            </div>
+
+            {ngError && <div className="text-[10px] font-bold text-lm-red uppercase">{ngError}</div>}
+
+            <div className="flex gap-2 pt-1">
+              <button type="submit" disabled={ngSaving}
+                className="flex-1 border border-lm-green/40 text-lm-green text-[10px] font-bold uppercase tracking-wider py-1.5 hover:bg-lm-green/10 disabled:opacity-50">
+                {ngSaving ? "Creating..." : "Create"}
+              </button>
+              <button type="button" onClick={() => setShowNewGame(false)}
+                className="flex-1 border border-lm-mid text-lm-gray text-[10px] font-bold uppercase tracking-wider py-1.5 hover:text-lm-light hover:border-lm-gray">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
