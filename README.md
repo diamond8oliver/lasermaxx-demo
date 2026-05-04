@@ -31,18 +31,23 @@ Open `http://localhost:3000`.
 
 > Handoff notes for any AI or contributor resuming work. Update before context runs out.
 
+**Done (2026-05-04):**
+- Staff control panel fully redesigned to match LMX Console v8.12 (boxy grid, stacked sidebar, cyan cell borders, modal new-game form)
+- Polling race conditions fixed (single-fetch reuse, `showLoading` param)
+- Layout header redesigned with LMX Console tab bar + ONLINE indicator
+- Both repos (demo + main Codenames) synced on UI
+- Deployed to Vercel
+
 **Immediate:**
+- Smoke-test the deployed Vercel URL — verify new LMX Console UI renders correctly
 - Extract repeated staff-screen polling logic into a shared hook
-- Add a `.env.example` file (currently: `DATABASE_URL` is the only required var)
 - Sync any game-mode changes from the production Lasermaxx Codenames repo
 
 **Short-term:**
-- Deploy to Vercel as a live demo link
 - Add a `/how-it-works` explainer page for prospective venue operators
 - Mobile-responsive staff view (tablet is primary, but iPhone fallback is useful)
 
 **Blockers / open questions:**
-- Polling race conditions were fixed in `d31de30` — monitor for regressions in airlock state transitions
 - Should the demo mirror the production game-mode catalog or stay on a simplified subset?
 
 **Environment setup required:**
