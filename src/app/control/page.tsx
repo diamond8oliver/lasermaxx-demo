@@ -10,45 +10,52 @@ import type {
 } from "@/types";
 
 /* ------------------------------------------------------------------ */
-/*  Status badge                                                       */
+/*  Static team palette — mirrors LMX Console v8.12                    */
 /* ------------------------------------------------------------------ */
 
-const STATUS_STYLES: Record<string, string> = {
-  waiting: "bg-lm-gray/20 text-lm-gray border-lm-gray/40",
-  pending: "bg-lm-yellow/15 text-lm-yellow border-lm-yellow/40",
-  approved: "bg-lm-green/15 text-lm-green border-lm-green/40",
-  rejected: "bg-lm-red/15 text-lm-red border-lm-red/40",
-  draft: "bg-lm-gray/20 text-lm-gray border-lm-gray/40",
-  open: "bg-lm-green/15 text-lm-green border-lm-green/40",
-  in_progress: "bg-lm-yellow/15 text-lm-yellow border-lm-yellow/40",
-  completed: "bg-lm-blue/15 text-lm-blue border-lm-blue/40",
-};
-
-function StatusBadge({ status }: { status: string }) {
-  const style = STATUS_STYLES[status] || STATUS_STYLES.waiting;
-  return (
-    <span
-      className={`inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${style}`}
-    >
-      {status.replace("_", " ")}
-    </span>
-  );
-}
+const TEAMS = [
+  { key: "RED",    label: "Red Team",    color: "#ff3333" },
+  { key: "GREEN",  label: "Green Team",  color: "#00cc66" },
+  { key: "BLUE",   label: "Blue Team",   color: "#00aaff" },
+  { key: "PINK",   label: "Pink Team",   color: "#ff66cc" },
+  { key: "YELLOW", label: "Yellow Team", color: "#ffcc00" },
+  { key: "OCEAN",  label: "Ocean Team",  color: "#00ddee" },
+] as const;
 
 /* ------------------------------------------------------------------ */
-/*  Time formatting                                                    */
+/*  Time / date formatting                                             */
 /* ------------------------------------------------------------------ */
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-US", {
-    hour: "numeric",
+    hour: "2-digit",
     minute: "2-digit",
-    hour12: true,
+    hour12: false,
   });
 }
 
+function formatLongDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function gameModeDuration(mode: string): string {
+  const m = mode.match(/(\d+)\s*Min/i);
+  return m ? `${m[1]} Minutes` : "15 Minutes";
+}
+
+function gameModeType(mode: string, isTeamMode: boolean): string {
+  if (/team/i.test(mode) || isTeamMode) return "Team";
+  if (/free for all|battle/i.test(mode)) return "FFA";
+  return "Solo";
+}
+
 /* ------------------------------------------------------------------ */
-/*  Feed entry type                                                    */
+/*  Feed entry                                                         */
 /* ------------------------------------------------------------------ */
 
 interface FeedEntry {
@@ -64,72 +71,8 @@ interface FeedEntry {
   timestamp: number;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Inline edit codename                                               */
-/* ------------------------------------------------------------------ */
-
-function InlineEdit({
-  player,
-  gameId,
-  onSaved,
-}: {
-  player: Player;
-  gameId: number;
-  onSaved: () => void;
-}) {
-  const [value, setValue] = useState(player.codename || "");
-  const [saving, setSaving] = useState(false);
-
-  async function save() {
-    if (!value.trim()) return;
-    setSaving(true);
-    try {
-      await fetch(`/api/games/${gameId}/players/${player.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ codename: value.trim() }),
-      });
-      onSaved();
-    } catch {
-      // silent
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div className="flex items-center gap-1">
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => setValue(e.target.value.toUpperCase())}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") save();
-          if (e.key === "Escape") onSaved();
-        }}
-        maxLength={12}
-        autoFocus
-        className="bg-lm-dark border border-lm-blue text-lm-light text-xs px-1.5 py-0.5 w-28 focus:outline-none focus:border-lm-cyan uppercase"
-      />
-      <button
-        onClick={save}
-        disabled={saving}
-        className="text-[10px] font-bold text-lm-green hover:text-lm-cyan disabled:opacity-50"
-      >
-        OK
-      </button>
-      <button
-        onClick={onSaved}
-        className="text-[10px] font-bold text-lm-gray hover:text-lm-light"
-      >
-        X
-      </button>
-    </div>
-  );
-}
-
 /* ================================================================== */
-/*  MAIN CONTROL PAGE                                                  */
+/*  MAIN — LMX Console v8.12 clone                                     */
 /* ================================================================== */
 
 export default function ControlPage() {
@@ -138,8 +81,6 @@ export default function ControlPage() {
   const [selectedGameId, setSelectedGameId] = useState<number | null>(null);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
-  const [loadingGames, setLoadingGames] = useState(true);
-  const [loadingPlayers, setLoadingPlayers] = useState(false);
   const [walkInPool, setWalkInPool] = useState<WalkInPool[]>([]);
   const [feed, setFeed] = useState<FeedEntry[]>([]);
 
@@ -155,12 +96,18 @@ export default function ControlPage() {
   const [ngSaving, setNgSaving] = useState(false);
   const [ngError, setNgError] = useState("");
 
-  // Quick add
-  const [quickName, setQuickName] = useState("");
-  // Paste add
-  const [pasteText, setPasteText] = useState("");
+  // Add player popover
+  const [showAddPlayer, setShowAddPlayer] = useState(false);
+  const [addPlayerName, setAddPlayerName] = useState("");
+  const [addPlayerPaste, setAddPlayerPaste] = useState("");
 
-  // Ref to avoid stale closure in socket handlers
+  // Activity / feed panel
+  const [showActivity, setShowActivity] = useState(false);
+
+  // Walk-in pool panel
+  const [showPool, setShowPool] = useState(false);
+  const [walkInName, setWalkInName] = useState("");
+
   const selectedGameIdRef = useRef<number | null>(null);
   selectedGameIdRef.current = selectedGameId;
 
@@ -169,15 +116,10 @@ export default function ControlPage() {
     try {
       const res = await fetch("/api/games");
       if (res.ok) setGames(await res.json());
-    } catch {
-      // silent
-    } finally {
-      setLoadingGames(false);
-    }
+    } catch {/* silent */}
   }, []);
 
-  const fetchPlayers = useCallback(async (gameId: number, showLoading = false) => {
-    if (showLoading) setLoadingPlayers(true);
+  const fetchPlayers = useCallback(async (gameId: number) => {
     try {
       const res = await fetch(`/api/games/${gameId}/players`);
       if (res.ok) {
@@ -185,11 +127,7 @@ export default function ControlPage() {
         setPlayers(data);
         return data;
       }
-    } catch {
-      // silent
-    } finally {
-      if (showLoading) setLoadingPlayers(false);
-    }
+    } catch {/* silent */}
     return null;
   }, []);
 
@@ -197,24 +135,20 @@ export default function ControlPage() {
     try {
       const res = await fetch(`/api/games/${gameId}`);
       if (res.ok) setSelectedGame(await res.json());
-    } catch {
-      // silent
-    }
+    } catch {/* silent */}
   }, []);
 
   const fetchWalkInPool = useCallback(async () => {
     try {
       const res = await fetch("/api/walk-in-pool");
       if (res.ok) setWalkInPool(await res.json());
-    } catch {
-      // silent
-    }
+    } catch {/* silent */}
   }, []);
 
   function selectGame(gameId: number) {
     setSelectedGameId(gameId);
     fetchGameDetail(gameId);
-    fetchPlayers(gameId, true);
+    fetchPlayers(gameId);
   }
 
   /* ---- Initial fetch ---- */
@@ -223,31 +157,25 @@ export default function ControlPage() {
     fetchWalkInPool();
   }, [fetchGames, fetchWalkInPool]);
 
-  /* ---- Polling (replaces Socket.IO for Vercel serverless) ---- */
+  /* ---- Polling (3s, replaces Socket.IO for serverless) ---- */
   useEffect(() => {
-    const seenPlayerIds = new Set<string>();
-
+    const seen = new Set<string>();
     const interval = setInterval(async () => {
-      // Always refresh games and walk-in pool
       fetchGames();
       fetchWalkInPool();
-
-      // If a game is selected, refresh players once and build feed from the same data
       const gId = selectedGameIdRef.current;
       if (gId) {
         fetchGameDetail(gId);
         const allPlayers = await fetchPlayers(gId);
-
-        // Build live feed from players with pending status or recent codename submissions
         if (allPlayers) {
-          const feedCandidates = allPlayers.filter(
+          const candidates = allPlayers.filter(
             (p) => p.codename && (p.status === "pending" || p.status === "approved")
           );
-          for (const p of feedCandidates) {
+          for (const p of candidates) {
             const key = `${p.id}-${p.codename}-${p.status}`;
-            if (!seenPlayerIds.has(key)) {
-              seenPlayerIds.add(key);
-              const entry: FeedEntry = {
+            if (!seen.has(key)) {
+              seen.add(key);
+              setFeed((prev) => [{
                 id: `${p.id}-${Date.now()}-${Math.random()}`,
                 playerId: p.id,
                 gameId: gId,
@@ -258,14 +186,12 @@ export default function ControlPage() {
                 team: p.team,
                 isBirthday: p.isBirthday,
                 timestamp: Date.now(),
-              };
-              setFeed((prev) => [entry, ...prev].slice(0, 50));
+              }, ...prev].slice(0, 50));
             }
           }
         }
       }
     }, 3000);
-
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -273,17 +199,12 @@ export default function ControlPage() {
   /* ---- Game actions ---- */
   async function createGame(e: React.FormEvent) {
     e.preventDefault();
-    if (!ngTime) {
-      setNgError("TIME IS REQUIRED");
-      return;
-    }
+    if (!ngTime) { setNgError("TIME IS REQUIRED"); return; }
     setNgSaving(true);
     setNgError("");
-
     const today = new Date();
-    const [hours, minutes] = ngTime.split(":");
-    today.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-
+    const [hh, mm] = ngTime.split(":");
+    today.setHours(parseInt(hh), parseInt(mm), 0, 0);
     try {
       const res = await fetch("/api/games", {
         method: "POST",
@@ -304,13 +225,9 @@ export default function ControlPage() {
         return;
       }
       setShowNewGame(false);
-      setNgTime("");
-      setNgLabel("");
-      setNgVestCount("20");
-      setNgGameMode(GAME_MODES[0]);
-      setNgTeamMode(false);
-      setNgBirthdayPerson("");
-      setNgBirthdayMessage("");
+      setNgTime(""); setNgLabel(""); setNgVestCount("20");
+      setNgGameMode(GAME_MODES[0]); setNgTeamMode(false);
+      setNgBirthdayPerson(""); setNgBirthdayMessage("");
       fetchGames();
     } catch {
       setNgError("NETWORK ERROR");
@@ -319,10 +236,7 @@ export default function ControlPage() {
     }
   }
 
-  async function handleGameStatus(
-    gameId: number,
-    status: "draft" | "open" | "in_progress" | "completed"
-  ) {
+  async function handleGameStatus(gameId: number, status: Game["status"]) {
     try {
       await fetch(`/api/games/${gameId}`, {
         method: "PATCH",
@@ -331,92 +245,63 @@ export default function ControlPage() {
       });
       fetchGames();
       fetchGameDetail(gameId);
-    } catch {
-      // silent
-    }
+    } catch {/* silent */}
   }
 
   async function handleDeleteGame(gameId: number) {
-    if (!confirm("DELETE THIS GAME? This cannot be undone.")) return;
+    if (!confirm("DELETE THIS GAME?")) return;
     try {
       await fetch(`/api/games/${gameId}`, { method: "DELETE" });
       if (selectedGameId === gameId) {
-        setSelectedGameId(null);
-        setSelectedGame(null);
-        setPlayers([]);
+        setSelectedGameId(null); setSelectedGame(null); setPlayers([]);
       }
       fetchGames();
-    } catch {
-      // silent
-    }
+    } catch {/* silent */}
+  }
+
+  async function changeGameMode(mode: string) {
+    if (!selectedGameId) return;
+    try {
+      await fetch(`/api/games/${selectedGameId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gameMode: mode }),
+      });
+      fetchGameDetail(selectedGameId);
+      fetchGames();
+    } catch {/* silent */}
   }
 
   /* ---- Player actions ---- */
   async function quickAddPlayer() {
-    if (!quickName.trim() || !selectedGameId) return;
+    if (!addPlayerName.trim() || !selectedGameId) return;
     try {
       await fetch(`/api/games/${selectedGameId}/players`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ realName: quickName.trim() }),
+        body: JSON.stringify({ realName: addPlayerName.trim() }),
       });
-      setQuickName("");
+      setAddPlayerName("");
       fetchPlayers(selectedGameId);
       fetchGames();
-    } catch {
-      // silent
-    }
+    } catch {/* silent */}
   }
 
   async function pasteAddPlayers() {
-    if (!pasteText.trim() || !selectedGameId) return;
+    if (!addPlayerPaste.trim() || !selectedGameId) return;
     try {
       await fetch(`/api/games/${selectedGameId}/players`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pastedText: pasteText }),
+        body: JSON.stringify({ pastedText: addPlayerPaste }),
       });
-      setPasteText("");
+      setAddPlayerPaste("");
       fetchPlayers(selectedGameId);
       fetchGames();
-    } catch {
-      // silent
-    }
-  }
-
-  async function patchPlayer(
-    playerId: number,
-    data: Record<string, unknown>
-  ) {
-    if (!selectedGameId) return;
-    try {
-      await fetch(`/api/games/${selectedGameId}/players/${playerId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      fetchPlayers(selectedGameId);
-    } catch {
-      // silent
-    }
-  }
-
-  async function removePlayer(playerId: number) {
-    if (!selectedGameId) return;
-    try {
-      await fetch(`/api/games/${selectedGameId}/players/${playerId}`, {
-        method: "DELETE",
-      });
-      fetchPlayers(selectedGameId);
-      fetchGames();
-    } catch {
-      // silent
-    }
+    } catch {/* silent */}
   }
 
   /* ---- Walk-in pool actions ---- */
-  const [walkInName, setWalkInName] = useState("");
-
   async function addToWalkInPool() {
     if (!walkInName.trim()) return;
     try {
@@ -427,9 +312,7 @@ export default function ControlPage() {
       });
       setWalkInName("");
       fetchWalkInPool();
-    } catch {
-      // silent
-    }
+    } catch {/* silent */}
   }
 
   async function removeFromWalkInPool(id: number) {
@@ -440,9 +323,7 @@ export default function ControlPage() {
         body: JSON.stringify({ id }),
       });
       fetchWalkInPool();
-    } catch {
-      // silent
-    }
+    } catch {/* silent */}
   }
 
   async function assignWalkInToGame(poolEntry: WalkInPool) {
@@ -453,7 +334,6 @@ export default function ControlPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ realName: poolEntry.realName, isWalkIn: true }),
       });
-      // Remove from pool
       await fetch("/api/walk-in-pool", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -462,9 +342,7 @@ export default function ControlPage() {
       fetchPlayers(selectedGameId);
       fetchWalkInPool();
       fetchGames();
-    } catch {
-      // silent
-    }
+    } catch {/* silent */}
   }
 
   /* ---- Feed actions ---- */
@@ -475,17 +353,9 @@ export default function ControlPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "approved" }),
       });
-      setFeed((prev) =>
-        prev.map((f) =>
-          f.id === entry.id ? { ...f, status: "approved" as PlayerStatus } : f
-        )
-      );
-      if (entry.gameId === selectedGameId) {
-        fetchPlayers(selectedGameId);
-      }
-    } catch {
-      // silent
-    }
+      setFeed((prev) => prev.map((f) => f.id === entry.id ? { ...f, status: "approved" as PlayerStatus } : f));
+      if (entry.gameId === selectedGameId) fetchPlayers(selectedGameId);
+    } catch {/* silent */}
   }
 
   async function rejectFeedEntry(entry: FeedEntry) {
@@ -495,592 +365,571 @@ export default function ControlPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "rejected" }),
       });
-      setFeed((prev) =>
-        prev.map((f) =>
-          f.id === entry.id ? { ...f, status: "rejected" as PlayerStatus } : f
-        )
-      );
-      if (entry.gameId === selectedGameId) {
-        fetchPlayers(selectedGameId);
-      }
-    } catch {
-      // silent
-    }
-  }
-
-  async function exportGameList() {
-    if (!selectedGameId) return;
-    window.open(`/api/games/${selectedGameId}/export`, "_blank");
+      setFeed((prev) => prev.map((f) => f.id === entry.id ? { ...f, status: "rejected" as PlayerStatus } : f));
+      if (entry.gameId === selectedGameId) fetchPlayers(selectedGameId);
+    } catch {/* silent */}
   }
 
   /* ---- Computed ---- */
-  const stats = {
-    total: players.length,
-    approved: players.filter((p) => p.status === "approved").length,
-    pending: players.filter((p) => p.status === "pending").length,
-    waiting: players.filter((p) => p.status === "waiting").length,
-    rejected: players.filter((p) => p.status === "rejected").length,
-  };
+  const teamCounts: Record<string, number> = TEAMS.reduce((acc, t) => {
+    acc[t.key] = players.filter((p) => p.team === t.key).length;
+    return acc;
+  }, {} as Record<string, number>);
 
-  const pasteLineCount = pasteText
-    .split(/\r?\n/)
-    .filter((l) => l.trim().length >= 2).length;
+  const vestMap: Record<number, Player | undefined> = {};
+  players.forEach((p) => { if (p.vestNumber) vestMap[p.vestNumber] = p; });
 
-  const pendingFeed = feed.filter((f) => f.status === "pending");
-  const resolvedFeed = feed.filter((f) => f.status !== "pending");
+  const totalPacks = selectedGame?.vestCount ?? 30;
+  const pendingFeedCount = feed.filter((f) => f.status === "pending").length;
 
-  /* ---- Editing state for player rows ---- */
-  const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null);
+  const nextAvailableGame = games.find((g) => g.status === "draft" || g.status === "open");
 
   /* ================================================================ */
-  /*  RENDER — LMX Console v8.12 style                                 */
+  /*  RENDER                                                           */
   /* ================================================================ */
 
   return (
-    <div className="flex h-[calc(100vh-2.5rem)]">
-      {/* ============================================================ */}
-      {/*  LEFT SIDEBAR — LMX-style stacked action buttons              */}
-      {/* ============================================================ */}
-      <aside className="w-36 shrink-0 bg-[#0e0e1a] border-r border-lm-cyan/15 flex flex-col">
-        {/* Action buttons */}
-        <div className="flex flex-col">
-          <button
-            onClick={() => setShowNewGame(true)}
-            className="w-full text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-lm-cyan border-b border-lm-cyan/15 bg-lm-cyan/8 hover:bg-lm-cyan/15 transition-colors"
-          >
-            New Group
-          </button>
-          {selectedGameId && selectedGame?.status === "draft" && (
-            <button
-              onClick={() => handleGameStatus(selectedGameId, "open")}
-              className="w-full text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-lm-green border-b border-lm-cyan/15 hover:bg-lm-green/10 transition-colors"
-            >
-              Open Game
-            </button>
-          )}
-          {selectedGameId && selectedGame?.status === "open" && (
-            <button
-              onClick={() => handleGameStatus(selectedGameId, "in_progress")}
-              className="w-full text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-lm-yellow border-b border-lm-cyan/15 hover:bg-lm-yellow/10 transition-colors"
-            >
-              Start Game
-            </button>
-          )}
-          {selectedGameId && selectedGame?.status === "in_progress" && (
-            <button
-              onClick={() => handleGameStatus(selectedGameId, "completed")}
-              className="w-full text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-lm-blue border-b border-lm-cyan/15 hover:bg-lm-blue/10 transition-colors"
-            >
-              Complete
-            </button>
-          )}
-          {selectedGameId && (
-            <button
-              onClick={() => handleDeleteGame(selectedGameId)}
-              className="w-full text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-lm-red border-b border-lm-cyan/15 hover:bg-lm-red/10 transition-colors"
-            >
-              Delete Game
-            </button>
-          )}
-          {selectedGameId && (
-            <button
-              onClick={exportGameList}
-              className="w-full text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-lm-gray border-b border-lm-cyan/15 hover:bg-lm-cyan/8 hover:text-lm-light transition-colors"
-            >
-              Export List
-            </button>
-          )}
-        </div>
+    <div className="flex flex-col h-screen bg-lm-black text-lm-light overflow-hidden">
 
-        {/* Time slots — game list */}
-        <div className="border-t border-lm-cyan/15 mt-auto">
-          <div className="px-3 py-1.5 border-b border-lm-cyan/15">
-            <span className="text-[9px] font-bold text-lm-gray uppercase tracking-[0.15em]">
-              Time &middot; {games.length} today
-            </span>
-          </div>
-          <div className="overflow-y-auto max-h-[calc(100vh-20rem)]">
-            {loadingGames ? (
-              <div className="px-3 py-4 text-center">
-                <span className="text-[10px] text-lm-gray uppercase tracking-wider animate-text-pulse">
-                  Loading...
-                </span>
-              </div>
-            ) : games.length === 0 ? (
-              <div className="px-3 py-4 text-center">
-                <span className="text-[10px] text-lm-mid uppercase">No games</span>
-              </div>
-            ) : (
-              games.map((game) => {
-                const isSelected = selectedGameId === game.id;
-                const playerCount = game._count?.players ?? 0;
-                return (
-                  <button
-                    key={game.id}
-                    onClick={() => selectGame(game.id)}
-                    className={`w-full text-left px-3 py-2 border-b border-lm-cyan/10 transition-colors ${
-                      isSelected
-                        ? "bg-lm-cyan/12 border-l-2 border-l-lm-cyan"
-                        : "hover:bg-[#14142a] border-l-2 border-l-transparent"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className={`text-xs font-bold ${isSelected ? "text-lm-cyan" : "text-lm-light"}`}>
-                        {formatTime(game.startTime)}
-                      </span>
-                      <StatusBadge status={game.status} />
-                    </div>
-                    {game.groupLabel && (
-                      <div className="text-[9px] text-lm-gray truncate mt-0.5">
-                        {game.groupLabel}
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {game.showGameMode && (
-                        <span className="text-[8px] font-bold text-lm-cyan">{game.gameMode}</span>
-                      )}
-                      {game.isTeamMode && (
-                        <span className="text-[8px] font-bold text-lm-purple">TEAM</span>
-                      )}
-                      {game.birthdayPerson && (
-                        <span className="text-[8px] text-lm-yellow">&#9733;</span>
-                      )}
-                      <span className="text-[8px] text-lm-mid ml-auto">{playerCount}P</span>
-                    </div>
-                  </button>
-                );
-              })
+      {/* ============================================================ */}
+      {/*  HEADER — LASERMAXX brand + tab bar (right)                   */}
+      {/* ============================================================ */}
+      <header className="h-9 shrink-0 bg-[#070710] border-b border-lm-cyan/40 flex items-stretch">
+        <div className="flex items-center px-3 gap-2 border-r border-lm-cyan/30 bg-[#0a0a18]">
+          <span className="inline-block w-3 h-3 bg-lm-cyan" style={{ clipPath: "polygon(50% 0, 100% 50%, 50% 100%, 0 50%)" }} />
+          <span className="text-lm-cyan font-bold text-[13px] tracking-[0.18em]">LASERMAXX</span>
+        </div>
+        <div className="ml-auto flex items-stretch text-[10px] uppercase tracking-wider">
+          {["Stamcards", "Play instructor", "Show next", "Start Game", "Application data"].map((t, i) => (
+            <button
+              key={t}
+              onClick={() => {
+                if (t === "Start Game" && selectedGameId && selectedGame?.status === "open")
+                  handleGameStatus(selectedGameId, "in_progress");
+              }}
+              className={`px-4 flex items-center border-l border-lm-cyan/20 transition-colors ${
+                i === 3 && selectedGame?.status === "open"
+                  ? "bg-lm-cyan/10 text-lm-cyan font-bold"
+                  : "text-lm-gray hover:text-lm-light hover:bg-[#0e0e1a]"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      {/* ============================================================ */}
+      {/*  MAIN — 6-column grid                                         */}
+      {/* ============================================================ */}
+      <div className="flex-1 flex min-h-0 p-2 gap-1 bg-[#070710]">
+
+        {/* ---- 1. Action sidebar ---- */}
+        <aside className="w-[88px] shrink-0 flex flex-col gap-1">
+          <ActionButton label="Cancel" onClick={() => { setSelectedGameId(null); setSelectedGame(null); setPlayers([]); }} />
+          <ActionButton label="New Group" highlight onClick={() => setShowNewGame(true)} />
+          <ActionButton label="Calendar" onClick={() => {}} />
+          <ActionButton label="Edit Game" onClick={() => selectedGameId && handleGameStatus(selectedGameId, "open")} />
+          <ActionButton label="Edit Group" onClick={() => setShowPool((s) => !s)} />
+          <ActionButton
+            label={pendingFeedCount > 0 ? `Activity (${pendingFeedCount})` : "Activity"}
+            small
+            alert={pendingFeedCount > 0}
+            onClick={() => setShowActivity((s) => !s)}
+          />
+          {selectedGameId && (
+            <ActionButton label="Delete" small danger onClick={() => handleDeleteGame(selectedGameId)} />
+          )}
+        </aside>
+
+        {/* ---- 2. Time column ---- */}
+        <Column header="Time" width="w-[150px]">
+          <div className="flex-1 overflow-y-auto">
+            {/* "Next Available" pinned cell */}
+            {nextAvailableGame && (
+              <button
+                onClick={() => selectGame(nextAvailableGame.id)}
+                className={`w-full text-left px-2 py-2 border-b border-lm-cyan/10 transition-colors ${
+                  selectedGameId === nextAvailableGame.id
+                    ? "bg-lm-cyan/15 outline outline-1 outline-lm-cyan -outline-offset-1"
+                    : "hover:bg-lm-cyan/5"
+                }`}
+              >
+                <div className="text-[9px] uppercase tracking-wider text-lm-cyan/70">Next Available</div>
+                <div className="text-base font-bold text-lm-light tabular-nums">{formatTime(nextAvailableGame.startTime)}</div>
+              </button>
+            )}
+            {/* All other games */}
+            {games.filter((g) => g.id !== nextAvailableGame?.id).map((game) => {
+              const isSel = selectedGameId === game.id;
+              const count = game._count?.players ?? 0;
+              return (
+                <button
+                  key={game.id}
+                  onClick={() => selectGame(game.id)}
+                  className={`w-full text-left px-2 py-1.5 border-b border-lm-cyan/10 transition-colors ${
+                    isSel
+                      ? "bg-lm-cyan/15 outline outline-1 outline-lm-cyan -outline-offset-1"
+                      : "hover:bg-lm-cyan/5"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={`text-sm font-bold tabular-nums ${isSel ? "text-lm-cyan" : "text-lm-light"}`}>
+                      {formatTime(game.startTime)}
+                    </span>
+                    <span className="text-[9px] text-lm-gray tabular-nums">{count}P</span>
+                  </div>
+                  {game.groupLabel && (
+                    <div className="text-[9px] text-lm-gray truncate">{game.groupLabel}</div>
+                  )}
+                </button>
+              );
+            })}
+            {games.length === 0 && (
+              <div className="px-2 py-3 text-center text-[10px] text-lm-mid uppercase">No games</div>
             )}
           </div>
-        </div>
-      </aside>
+          <ColumnFooter label="Other timespan" onClick={() => setShowNewGame(true)} />
+        </Column>
 
-      {/* ============================================================ */}
-      {/*  CENTER — Player Grid (LMX Packs-style)                       */}
-      {/* ============================================================ */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-[#0a0a16]">
-        {!selectedGameId ? (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="text-lm-mid text-2xl mb-3">&#9654;</div>
-              <p className="text-[11px] text-lm-gray uppercase tracking-wider">
-                Select a game from the left panel
-              </p>
-            </div>
+        {/* ---- 3. Game style column ---- */}
+        <Column header="Game style" width="w-[180px]">
+          <div className="flex-1 overflow-y-auto">
+            {GAME_MODES.map((mode, idx) => {
+              const isSel = selectedGame?.gameMode === mode;
+              const num = idx + 1;
+              return (
+                <button
+                  key={mode}
+                  onClick={() => changeGameMode(mode)}
+                  disabled={!selectedGameId}
+                  className={`w-full text-left px-2 py-1.5 border-b border-lm-cyan/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                    isSel
+                      ? "bg-lm-cyan/15 outline outline-1 outline-lm-cyan -outline-offset-1 text-lm-cyan"
+                      : "text-lm-light hover:bg-lm-cyan/5"
+                  }`}
+                >
+                  <span className="text-[11px] tabular-nums">{num} - {mode}</span>
+                </button>
+              );
+            })}
           </div>
-        ) : (
-          <>
-            {/* Game header bar */}
-            <div className="bg-[#0e0e1a] border-b border-lm-cyan/20 px-3 py-2 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-bold text-lm-light">
-                  {selectedGame ? formatTime(selectedGame.startTime) : "..."}
-                </span>
-                {selectedGame?.groupLabel && (
-                  <span className="text-[11px] text-lm-gray">{selectedGame.groupLabel}</span>
-                )}
-                {selectedGame && <StatusBadge status={selectedGame.status} />}
-                {selectedGame?.showGameMode && (
-                  <span className="text-[9px] font-bold text-lm-cyan border border-lm-cyan/30 px-1.5 py-0.5">
-                    {selectedGame.gameMode}
-                  </span>
-                )}
-                {selectedGame?.isTeamMode && (
-                  <span className="text-[9px] font-bold text-lm-purple border border-lm-purple/30 px-1.5 py-0.5">
-                    TEAM
-                  </span>
-                )}
-                {selectedGame?.birthdayPerson && (
-                  <span className="text-[10px] text-lm-yellow font-bold">
-                    &#9733; {selectedGame.birthdayPerson}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider">
-                <span className="text-lm-light">{stats.total}</span>
-                <span className="text-lm-green">{stats.approved} OK</span>
-                <span className="text-lm-yellow">{stats.pending} PEND</span>
-                <span className="text-lm-gray">{stats.waiting} WAIT</span>
-              </div>
-            </div>
+          <ColumnFooter label="Select.." onClick={() => {}} />
+        </Column>
 
-            {/* Quick add bar */}
-            <div className="bg-[#0e0e1a] border-b border-lm-cyan/15 px-3 py-1.5 flex items-center gap-3">
-              <input
-                type="text"
-                value={quickName}
-                onChange={(e) => setQuickName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") quickAddPlayer(); }}
-                placeholder="ADD NAME..."
-                className="bg-[#0a0a16] border border-lm-cyan/20 text-lm-light text-[11px] px-2 py-1 w-44 placeholder:text-lm-mid focus:outline-none focus:border-lm-cyan/50 uppercase"
-              />
-              <button
-                onClick={quickAddPlayer}
-                disabled={!quickName.trim()}
-                className="border border-lm-cyan/25 text-lm-green text-[10px] font-bold uppercase px-2.5 py-1 hover:bg-lm-green/10 disabled:opacity-40 transition-colors"
-              >
-                Add
-              </button>
-              <div className="w-px h-5 bg-lm-cyan/15" />
-              <textarea
-                value={pasteText}
-                onChange={(e) => setPasteText(e.target.value)}
-                placeholder="PASTE NAMES..."
-                rows={1}
-                className="bg-[#0a0a16] border border-lm-cyan/20 text-lm-light text-[11px] px-2 py-1 w-52 placeholder:text-lm-mid focus:outline-none focus:border-lm-cyan/50 resize-none"
-              />
-              <button
-                onClick={pasteAddPlayers}
-                disabled={pasteLineCount === 0}
-                className="border border-lm-cyan/25 text-lm-blue text-[10px] font-bold uppercase px-2.5 py-1 hover:bg-lm-blue/10 disabled:opacity-40 transition-colors whitespace-nowrap"
-              >
-                Load {pasteLineCount}
-              </button>
-            </div>
-
-            {/* Player roster — LMX grid style */}
-            <div className="flex-1 overflow-y-auto">
-              {loadingPlayers ? (
-                <div className="p-6 text-center">
-                  <span className="text-[11px] text-lm-gray uppercase tracking-wider animate-text-pulse">
-                    Loading roster...
+        {/* ---- 4. Teams column ---- */}
+        <Column header="Teams" width="w-[140px]">
+          <div className="flex-1 overflow-y-auto">
+            {TEAMS.map((team) => {
+              const count = teamCounts[team.key] || 0;
+              const isActive = selectedGame?.isTeamMode && (team.key === "RED" || team.key === "BLUE");
+              return (
+                <div
+                  key={team.key}
+                  className={`flex items-center justify-between px-2 py-1.5 border-b border-lm-cyan/10 ${
+                    isActive ? "" : "opacity-60"
+                  }`}
+                >
+                  <span
+                    className="text-[11px] font-bold uppercase tracking-wide"
+                    style={{ color: team.color }}
+                  >
+                    {team.label}
                   </span>
-                </div>
-              ) : players.length === 0 ? (
-                <div className="p-6 text-center">
-                  <p className="text-[11px] text-lm-mid uppercase tracking-wider">No players yet</p>
-                </div>
-              ) : (
-                <table className="w-full border-collapse">
-                  <thead className="sticky top-0 z-10">
-                    <tr className="bg-[#12122a]">
-                      <th className="text-[9px] font-bold text-lm-cyan/70 uppercase tracking-wider text-left px-2 py-1.5 border border-lm-cyan/20 w-8">#</th>
-                      <th className="text-[9px] font-bold text-lm-cyan/70 uppercase tracking-wider text-left px-2 py-1.5 border border-lm-cyan/20 w-12">Vest</th>
-                      <th className="text-[9px] font-bold text-lm-cyan/70 uppercase tracking-wider text-left px-2 py-1.5 border border-lm-cyan/20">Name</th>
-                      <th className="text-[9px] font-bold text-lm-cyan/70 uppercase tracking-wider text-left px-2 py-1.5 border border-lm-cyan/20">Codename</th>
-                      <th className="text-[9px] font-bold text-lm-cyan/70 uppercase tracking-wider text-left px-2 py-1.5 border border-lm-cyan/20 w-14">Team</th>
-                      <th className="text-[9px] font-bold text-lm-cyan/70 uppercase tracking-wider text-center px-2 py-1.5 border border-lm-cyan/20 w-8">BD</th>
-                      <th className="text-[9px] font-bold text-lm-cyan/70 uppercase tracking-wider text-left px-2 py-1.5 border border-lm-cyan/20 w-20">Status</th>
-                      <th className="text-[9px] font-bold text-lm-cyan/70 uppercase tracking-wider text-left px-2 py-1.5 border border-lm-cyan/20 w-28">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {players.map((player, idx) => (
-                      <tr
-                        key={player.id}
-                        className={`hover:bg-[#14142a] transition-colors ${
-                          player.isBirthday ? "bg-lm-yellow/5" : ""
-                        }`}
-                      >
-                        <td className="px-2 py-1 text-[11px] text-lm-mid border border-lm-cyan/12">
-                          {idx + 1}
-                        </td>
-                        <td className="px-2 py-1 text-[11px] text-lm-yellow font-bold border border-lm-cyan/12">
-                          {player.vestNumber ?? <span className="text-lm-mid">--</span>}
-                        </td>
-                        <td className="px-2 py-1 text-[11px] text-lm-light border border-lm-cyan/12">
-                          {player.realName}
-                          {player.isWalkIn && <span className="ml-1 text-[8px] text-lm-purple">WI</span>}
-                        </td>
-                        <td className="px-2 py-1 border border-lm-cyan/12">
-                          {editingPlayerId === player.id ? (
-                            <InlineEdit
-                              player={player}
-                              gameId={selectedGameId}
-                              onSaved={() => { setEditingPlayerId(null); fetchPlayers(selectedGameId); }}
-                            />
-                          ) : (
-                            <span className="text-[11px] text-lm-cyan font-bold uppercase tracking-wider">
-                              {player.codename || <span className="text-lm-mid font-normal normal-case tracking-normal italic">awaiting...</span>}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-2 py-1 border border-lm-cyan/12">
-                          {player.team ? (
-                            <span className={`text-[10px] font-bold ${player.team === "RED" ? "text-lm-red" : "text-lm-blue"}`}>
-                              {player.team}
-                            </span>
-                          ) : selectedGame?.isTeamMode ? (
-                            <div className="flex gap-px">
-                              <button onClick={() => patchPlayer(player.id, { team: "RED" })} className="text-[9px] text-lm-red border border-lm-red/30 px-1 hover:bg-lm-red/10">R</button>
-                              <button onClick={() => patchPlayer(player.id, { team: "BLUE" })} className="text-[9px] text-lm-blue border border-lm-blue/30 px-1 hover:bg-lm-blue/10">B</button>
-                            </div>
-                          ) : (
-                            <span className="text-lm-mid text-[10px]">--</span>
-                          )}
-                        </td>
-                        <td className="px-2 py-1 text-center border border-lm-cyan/12">
-                          <button
-                            onClick={() => patchPlayer(player.id, { isBirthday: !player.isBirthday })}
-                            className={`text-sm leading-none ${player.isBirthday ? "text-lm-yellow" : "text-lm-mid hover:text-lm-yellow"}`}
-                          >
-                            {player.isBirthday ? "\u2605" : "\u2606"}
-                          </button>
-                        </td>
-                        <td className="px-2 py-1 border border-lm-cyan/12">
-                          <StatusBadge status={player.status} />
-                        </td>
-                        <td className="px-2 py-1 border border-lm-cyan/12">
-                          <div className="flex items-center gap-px">
-                            {player.status !== "approved" && (
-                              <button onClick={() => patchPlayer(player.id, { status: "approved" })} className="border border-lm-green/30 text-lm-green text-[9px] font-bold uppercase px-1.5 py-0.5 hover:bg-lm-green/15">OK</button>
-                            )}
-                            {player.status !== "rejected" && (
-                              <button onClick={() => patchPlayer(player.id, { status: "rejected" })} className="border border-lm-red/30 text-lm-red text-[9px] font-bold uppercase px-1.5 py-0.5 hover:bg-lm-red/15">X</button>
-                            )}
-                            <button onClick={() => setEditingPlayerId(player.id)} className="border border-lm-blue/30 text-lm-blue text-[9px] font-bold uppercase px-1.5 py-0.5 hover:bg-lm-blue/15">ED</button>
-                            <button onClick={() => removePlayer(player.id)} className="text-[9px] font-bold text-lm-mid hover:text-lm-red px-1">DEL</button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-
-              {/* Pagination-style footer like LMX */}
-              {players.length > 0 && (
-                <div className="px-3 py-1.5 border-t border-lm-cyan/15 text-right">
-                  <span className="text-[9px] text-lm-gray font-bold">
-                    1-{players.length} &rarr;
-                  </span>
-                </div>
-              )}
-
-              {/* Walk-in pool */}
-              {selectedGameId && (
-                <div className="border-t border-lm-cyan/20 px-3 py-2">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[9px] font-bold text-lm-purple uppercase tracking-[0.15em]">
-                      Walk-In Pool
-                    </span>
-                    <span className="text-[9px] text-lm-mid">{walkInPool.length} available</span>
-                  </div>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <input
-                      type="text"
-                      value={walkInName}
-                      onChange={(e) => setWalkInName(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") addToWalkInPool(); }}
-                      placeholder="ADD TO POOL..."
-                      className="bg-[#0a0a16] border border-lm-cyan/20 text-lm-light text-[11px] px-2 py-1 w-36 placeholder:text-lm-mid focus:outline-none focus:border-lm-purple/50"
-                    />
-                    <button
-                      onClick={addToWalkInPool}
-                      disabled={!walkInName.trim()}
-                      className="border border-lm-purple/30 text-lm-purple text-[9px] font-bold uppercase px-2 py-1 hover:bg-lm-purple/10 disabled:opacity-40"
-                    >
-                      Add
-                    </button>
-                  </div>
-                  {walkInPool.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {walkInPool.map((entry) => (
-                        <div key={entry.id} className="inline-flex items-center gap-1 border border-lm-purple/25 px-1.5 py-0.5 bg-lm-purple/5">
-                          <span className="text-[10px] font-bold text-lm-purple">{entry.realName}</span>
-                          <button onClick={() => assignWalkInToGame(entry)} className="text-[8px] text-lm-green hover:text-lm-cyan font-bold" title="Assign to game">+G</button>
-                          <button onClick={() => removeFromWalkInPool(entry.id)} className="text-[8px] text-lm-mid hover:text-lm-red font-bold" title="Remove">X</button>
-                        </div>
-                      ))}
-                    </div>
+                  {count > 0 && (
+                    <span className="text-[11px] font-bold text-lm-light tabular-nums">{count}</span>
                   )}
                 </div>
-              )}
+              );
+            })}
+          </div>
+        </Column>
+
+        {/* ---- 5. Packs grid ---- */}
+        <Column header="Packs" width="flex-1">
+          <div className="flex-1 overflow-y-auto p-2">
+            <div className="grid grid-cols-6 gap-1">
+              {Array.from({ length: totalPacks }).map((_, i) => {
+                const num = i + 1;
+                const player = vestMap[num];
+                const teamColor = TEAMS.find((t) => t.key === player?.team)?.color;
+                return (
+                  <div
+                    key={num}
+                    className="aspect-square border border-lm-cyan/30 flex items-center justify-center relative bg-[#0a0a18] hover:border-lm-cyan/60 transition-colors group"
+                    style={teamColor ? { borderColor: teamColor, backgroundColor: `${teamColor}22` } : {}}
+                    title={player ? `${player.realName} (${player.codename || "no codename"})` : `Pack ${num}`}
+                  >
+                    {/* Shield/vest icon */}
+                    <svg viewBox="0 0 24 24" className="w-5 h-5" fill={teamColor || "#1a1a2a"} stroke={teamColor || "#00ffcc"} strokeWidth="1.5" opacity={player ? 1 : 0.7}>
+                      <path d="M12 2 L20 5 V12 C20 17 16 21 12 22 C8 21 4 17 4 12 V5 Z" />
+                    </svg>
+                    {/* Vest number */}
+                    <span className="absolute bottom-0 right-0.5 text-[8px] font-bold text-lm-cyan/70 tabular-nums leading-none">
+                      {num}
+                    </span>
+                    {/* Player initial */}
+                    {player && (
+                      <span className="absolute top-0 left-0.5 text-[8px] font-bold leading-none" style={{ color: teamColor || "#00ffcc" }}>
+                        {(player.codename || player.realName).charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          </>
-        )}
+          </div>
+          <div className="px-2 py-1 border-t border-lm-cyan/20 text-right">
+            <span className="text-[10px] text-lm-cyan/70 tabular-nums">1 - {totalPacks} &rarr;</span>
+          </div>
+        </Column>
+
+        {/* ---- 6. Right panel — Packs on/off + Game info ---- */}
+        <aside className="w-[170px] shrink-0 flex flex-col gap-1">
+          <ActionButton label="Packs on" small onClick={() => {}} />
+          <ActionButton label="Packs off" small onClick={() => {}} />
+          <ActionButton label="Add" small highlight onClick={() => setShowAddPlayer(true)} />
+
+          <div className="flex-1 flex flex-col border border-lm-cyan/30 bg-[#0a0a18] mt-1 min-h-0">
+            <div className="px-2 py-1 border-b border-lm-cyan/20 text-[10px] font-bold text-lm-cyan/80 uppercase tracking-wider">
+              Game
+            </div>
+            {selectedGame ? (
+              <>
+                <div className="px-2 py-1.5 border-b border-lm-cyan/10">
+                  <div className="text-xs font-bold text-lm-light uppercase truncate">
+                    {selectedGame.groupLabel || "COMP NIGHT"}
+                  </div>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  {players.length === 0 ? (
+                    <div className="px-2 py-3 text-center text-[10px] text-lm-mid uppercase">No players</div>
+                  ) : (
+                    players.map((p, i) => {
+                      const teamColor = TEAMS.find((t) => t.key === p.team)?.color;
+                      return (
+                        <div key={p.id} className="flex items-center gap-1 px-2 py-0.5 border-b border-lm-cyan/5">
+                          <span className="text-[10px] text-lm-mid tabular-nums">{i + 1}</span>
+                          <span className="text-[10px] text-lm-mid">-</span>
+                          <span
+                            className="text-[10px] font-bold uppercase truncate flex-1"
+                            style={{ color: teamColor || "var(--color-lm-light)" }}
+                          >
+                            {p.codename || p.realName}
+                          </span>
+                          {p.vestNumber && (
+                            <span className="text-[9px] text-lm-cyan/70 tabular-nums">({p.vestNumber})</span>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 flex items-center justify-center px-2 py-4">
+                <span className="text-[10px] text-lm-mid italic uppercase">No game selected</span>
+              </div>
+            )}
+            <button
+              onClick={() => setShowNewGame(true)}
+              className="border-t border-lm-cyan/30 text-lm-cyan hover:bg-lm-cyan/10 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors"
+            >
+              Create
+            </button>
+          </div>
+        </aside>
       </div>
 
       {/* ============================================================ */}
-      {/*  RIGHT PANEL — Game info + Live Feed                          */}
+      {/*  FOOTER — info strip                                          */}
       {/* ============================================================ */}
-      <aside className="w-56 shrink-0 bg-[#0e0e1a] border-l border-lm-cyan/15 flex flex-col overflow-hidden">
-        {/* Game info card */}
-        <div className="px-3 py-2 border-b border-lm-cyan/15">
-          <div className="text-[9px] font-bold text-lm-gray uppercase tracking-[0.15em] mb-1.5">
-            Game
-          </div>
-          {selectedGame ? (
-            <div className="space-y-1">
-              <div className="text-xs font-bold text-lm-light uppercase">
-                {selectedGame.groupLabel || formatTime(selectedGame.startTime)}
-              </div>
-              {selectedGame.showGameMode && (
-                <div className="text-[10px] text-lm-cyan">{selectedGame.gameMode}</div>
-              )}
-              <div className="text-[9px] text-lm-gray">
-                {selectedGame.vestCount} Vests &middot; {stats.total} Players
-              </div>
-              {selectedGame.birthdayPerson && (
-                <div className="text-[9px] text-lm-yellow font-bold">
-                  &#9733; {selectedGame.birthdayPerson}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-[10px] text-lm-mid italic">No game selected</div>
-          )}
-        </div>
-
-        {/* Player summary (like LMX right panel player list) */}
-        {selectedGame && players.length > 0 && (
-          <div className="px-3 py-2 border-b border-lm-cyan/15 max-h-48 overflow-y-auto">
-            <div className="text-[9px] font-bold text-lm-gray uppercase tracking-[0.15em] mb-1">
-              Packs of
-            </div>
-            {players.map((p, i) => (
-              <div key={p.id} className="flex items-center gap-1.5 py-0.5">
-                <span className="text-[9px] text-lm-mid w-4 text-right">{i + 1}</span>
-                <span className="text-[9px] text-lm-mid">&ndash;</span>
-                <span className="text-[10px] text-lm-light font-bold uppercase truncate">
-                  {p.codename || p.realName}
-                </span>
-                {p.vestNumber && (
-                  <span className="text-[8px] text-lm-yellow ml-auto">({p.vestNumber})</span>
-                )}
-              </div>
-            ))}
-          </div>
+      <footer className="h-7 shrink-0 bg-[#0a0a18] border-t border-lm-cyan/30 flex items-center px-3 text-[10px] text-lm-gray tracking-wide">
+        {selectedGame ? (
+          <>
+            <span className="text-lm-light">{formatLongDate(selectedGame.startTime)} {formatTime(selectedGame.startTime)}</span>
+            <span className="mx-3 text-lm-mid">|</span>
+            <span>{selectedGame.gameMode}</span>
+            <span className="mx-3 text-lm-mid">/</span>
+            <span>Type: <span className="text-lm-cyan">{gameModeType(selectedGame.gameMode, selectedGame.isTeamMode)}</span></span>
+            <span className="mx-3 text-lm-mid">/</span>
+            <span>Duration: <span className="text-lm-cyan">{gameModeDuration(selectedGame.gameMode)}</span></span>
+            <span className="ml-auto text-lm-mid">{games.length} sessions today</span>
+          </>
+        ) : (
+          <span className="text-lm-mid">— No session selected —</span>
         )}
-
-        {/* Live feed */}
-        <div className="px-3 py-1.5 border-b border-lm-cyan/15 flex items-center justify-between">
-          <span className="text-[9px] font-bold text-lm-gray uppercase tracking-[0.15em]">
-            Live Feed
-          </span>
-        </div>
-
-        <div className="flex-1 overflow-y-auto">
-          {/* Pending approvals */}
-          {pendingFeed.length > 0 && (
-            <div className="border-b border-lm-yellow/20">
-              <div className="px-3 py-1 bg-lm-yellow/8">
-                <span className="text-[8px] font-bold text-lm-yellow uppercase tracking-wider">
-                  Pending ({pendingFeed.length})
-                </span>
-              </div>
-              {pendingFeed.map((entry) => (
-                <div key={entry.id} className="px-3 py-1.5 border-b border-lm-cyan/10">
-                  <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-[10px] text-lm-light">{entry.realName}</span>
-                    <div className="flex items-center gap-px">
-                      <button onClick={() => approveFeedEntry(entry)} className="border border-lm-green/30 text-lm-green text-[9px] font-bold px-1.5 py-0.5 hover:bg-lm-green/15">OK</button>
-                      <button onClick={() => rejectFeedEntry(entry)} className="border border-lm-red/30 text-lm-red text-[9px] font-bold px-1.5 py-0.5 hover:bg-lm-red/15">X</button>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-lm-cyan uppercase">{entry.codename}</span>
-                    {entry.vestNumber && <span className="text-[9px] text-lm-yellow font-bold">V{entry.vestNumber}</span>}
-                    {entry.team && (
-                      <span className={`text-[8px] font-bold ${entry.team === "RED" ? "text-lm-red" : "text-lm-blue"}`}>{entry.team}</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Resolved entries */}
-          {resolvedFeed.map((entry) => (
-            <div key={entry.id} className="px-3 py-1.5 border-b border-lm-cyan/8">
-              <div className="flex items-center justify-between mb-0.5">
-                <span className="text-[10px] text-lm-gray">{entry.realName}</span>
-                <StatusBadge status={entry.status} />
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-bold text-lm-cyan uppercase">{entry.codename}</span>
-                {entry.vestNumber && <span className="text-[9px] text-lm-yellow font-bold">V{entry.vestNumber}</span>}
-                {entry.team && (
-                  <span className={`text-[8px] font-bold ${entry.team === "RED" ? "text-lm-red" : "text-lm-blue"}`}>{entry.team}</span>
-                )}
-              </div>
-            </div>
-          ))}
-
-          {feed.length === 0 && (
-            <div className="px-3 py-4 text-center">
-              <p className="text-[10px] text-lm-mid uppercase tracking-wider">No submissions yet</p>
-            </div>
-          )}
-        </div>
-      </aside>
+      </footer>
 
       {/* ============================================================ */}
-      {/*  NEW GAME MODAL (overlays when showNewGame is true)            */}
+      {/*  NEW GAME MODAL                                               */}
       {/* ============================================================ */}
       {showNewGame && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <form
-            onSubmit={createGame}
-            className="bg-[#12122a] border border-lm-cyan/30 p-4 w-80 space-y-2"
-          >
-            <div className="text-[10px] font-bold text-lm-cyan uppercase tracking-wider mb-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <form onSubmit={createGame} className="bg-[#0a0a18] border border-lm-cyan/40 p-4 w-80 space-y-2 shadow-[0_0_40px_rgba(0,255,204,0.2)]">
+            <div className="text-[11px] font-bold text-lm-cyan uppercase tracking-[0.2em] mb-2 pb-2 border-b border-lm-cyan/20">
               New Session
             </div>
-
-            <div>
-              <label className="block text-[9px] uppercase text-lm-gray tracking-wider mb-0.5">Time</label>
+            <FormField label="Time">
               <input type="time" value={ngTime} onChange={(e) => setNgTime(e.target.value)}
-                className="w-full bg-[#0a0a16] border border-lm-cyan/20 text-lm-light text-sm px-2 py-1 focus:outline-none focus:border-lm-cyan/50" />
-            </div>
-
-            <div>
-              <label className="block text-[9px] uppercase text-lm-gray tracking-wider mb-0.5">Group Label</label>
+                className="w-full bg-[#070710] border border-lm-cyan/30 text-lm-light text-sm px-2 py-1 focus:outline-none focus:border-lm-cyan" />
+            </FormField>
+            <FormField label="Group Label">
               <input type="text" value={ngLabel} onChange={(e) => setNgLabel(e.target.value)} placeholder="e.g. Birthday Party"
-                className="w-full bg-[#0a0a16] border border-lm-cyan/20 text-lm-light text-sm px-2 py-1 placeholder:text-lm-mid focus:outline-none focus:border-lm-cyan/50" />
-            </div>
-
-            <div>
-              <label className="block text-[9px] uppercase text-lm-gray tracking-wider mb-0.5">Game Mode</label>
+                className="w-full bg-[#070710] border border-lm-cyan/30 text-lm-light text-sm px-2 py-1 placeholder:text-lm-mid focus:outline-none focus:border-lm-cyan" />
+            </FormField>
+            <FormField label="Game Mode">
               <select value={ngGameMode} onChange={(e) => setNgGameMode(e.target.value)}
-                className="w-full bg-[#0a0a16] border border-lm-cyan/20 text-lm-light text-sm px-2 py-1 focus:outline-none focus:border-lm-cyan/50">
-                {GAME_MODES.map((mode) => <option key={mode} value={mode}>{mode}</option>)}
+                className="w-full bg-[#070710] border border-lm-cyan/30 text-lm-light text-sm px-2 py-1 focus:outline-none focus:border-lm-cyan">
+                {GAME_MODES.map((m) => <option key={m} value={m}>{m}</option>)}
               </select>
-            </div>
-
-            <div>
-              <label className="block text-[9px] uppercase text-lm-gray tracking-wider mb-0.5">Vest Count</label>
+            </FormField>
+            <FormField label="Vest Count">
               <input type="number" value={ngVestCount} onChange={(e) => setNgVestCount(e.target.value)} min={1} max={50}
-                className="w-full bg-[#0a0a16] border border-lm-cyan/20 text-lm-light text-sm px-2 py-1 focus:outline-none focus:border-lm-cyan/50" />
-            </div>
-
+                className="w-full bg-[#070710] border border-lm-cyan/30 text-lm-light text-sm px-2 py-1 focus:outline-none focus:border-lm-cyan" />
+            </FormField>
             <div className="flex items-center justify-between">
-              <span className="text-[9px] uppercase text-lm-gray tracking-wider">Team Mode</span>
+              <span className="text-[10px] uppercase text-lm-gray tracking-wider">Team Mode</span>
               <label className="relative cursor-pointer">
                 <input type="checkbox" checked={ngTeamMode} onChange={(e) => setNgTeamMode(e.target.checked)} className="sr-only peer" />
-                <div className="w-9 h-4 bg-[#0a0a16] border border-lm-cyan/20 peer-checked:bg-lm-purple/20 peer-checked:border-lm-purple/40 flex items-center">
-                  <div className={`w-3 h-3 transition-all ${ngTeamMode ? "translate-x-5 bg-lm-purple" : "translate-x-0.5 bg-lm-mid"}`} />
+                <div className="w-9 h-4 bg-[#070710] border border-lm-cyan/30 peer-checked:bg-lm-cyan/20 peer-checked:border-lm-cyan flex items-center">
+                  <div className={`w-3 h-3 transition-all ${ngTeamMode ? "translate-x-5 bg-lm-cyan" : "translate-x-0.5 bg-lm-mid"}`} />
                 </div>
               </label>
             </div>
-
-            <div>
-              <label className="block text-[9px] uppercase text-lm-gray tracking-wider mb-0.5">Birthday Person</label>
+            <FormField label="Birthday Person">
               <input type="text" value={ngBirthdayPerson} onChange={(e) => setNgBirthdayPerson(e.target.value)} placeholder="Optional"
-                className="w-full bg-[#0a0a16] border border-lm-cyan/20 text-lm-light text-sm px-2 py-1 placeholder:text-lm-mid focus:outline-none focus:border-lm-yellow/50" />
-            </div>
-
-            <div>
-              <label className="block text-[9px] uppercase text-lm-gray tracking-wider mb-0.5">Birthday Message</label>
+                className="w-full bg-[#070710] border border-lm-cyan/30 text-lm-light text-sm px-2 py-1 placeholder:text-lm-mid focus:outline-none focus:border-lm-yellow" />
+            </FormField>
+            <FormField label="Birthday Message">
               <input type="text" value={ngBirthdayMessage} onChange={(e) => setNgBirthdayMessage(e.target.value)} placeholder="e.g. Happy Birthday!"
-                className="w-full bg-[#0a0a16] border border-lm-cyan/20 text-lm-light text-sm px-2 py-1 placeholder:text-lm-mid focus:outline-none focus:border-lm-yellow/50" />
-            </div>
-
+                className="w-full bg-[#070710] border border-lm-cyan/30 text-lm-light text-sm px-2 py-1 placeholder:text-lm-mid focus:outline-none focus:border-lm-yellow" />
+            </FormField>
             {ngError && <div className="text-[10px] font-bold text-lm-red uppercase">{ngError}</div>}
-
             <div className="flex gap-2 pt-1">
               <button type="submit" disabled={ngSaving}
-                className="flex-1 border border-lm-green/40 text-lm-green text-[10px] font-bold uppercase tracking-wider py-1.5 hover:bg-lm-green/10 disabled:opacity-50">
+                className="flex-1 border border-lm-cyan text-lm-cyan text-[11px] font-bold uppercase tracking-wider py-2 hover:bg-lm-cyan/15 disabled:opacity-50">
                 {ngSaving ? "Creating..." : "Create"}
               </button>
               <button type="button" onClick={() => setShowNewGame(false)}
-                className="flex-1 border border-lm-mid text-lm-gray text-[10px] font-bold uppercase tracking-wider py-1.5 hover:text-lm-light hover:border-lm-gray">
+                className="flex-1 border border-lm-mid text-lm-gray text-[11px] font-bold uppercase tracking-wider py-2 hover:text-lm-light hover:border-lm-gray">
                 Cancel
               </button>
             </div>
           </form>
         </div>
       )}
+
+      {/* ============================================================ */}
+      {/*  ADD PLAYER MODAL                                             */}
+      {/* ============================================================ */}
+      {showAddPlayer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowAddPlayer(false)}>
+          <div className="bg-[#0a0a18] border border-lm-cyan/40 p-4 w-96 space-y-3" onClick={(e) => e.stopPropagation()}>
+            <div className="text-[11px] font-bold text-lm-cyan uppercase tracking-[0.2em] mb-2 pb-2 border-b border-lm-cyan/20">
+              Add Players {selectedGame ? `→ ${formatTime(selectedGame.startTime)}` : ""}
+            </div>
+            {!selectedGameId ? (
+              <div className="text-[11px] text-lm-yellow uppercase">Select a game first</div>
+            ) : (
+              <>
+                <FormField label="Single name">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={addPlayerName}
+                      onChange={(e) => setAddPlayerName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") quickAddPlayer(); }}
+                      placeholder="ADD NAME..."
+                      className="flex-1 bg-[#070710] border border-lm-cyan/30 text-lm-light text-sm px-2 py-1 placeholder:text-lm-mid focus:outline-none focus:border-lm-cyan uppercase"
+                    />
+                    <button
+                      onClick={quickAddPlayer}
+                      disabled={!addPlayerName.trim()}
+                      className="border border-lm-cyan text-lm-cyan text-[10px] font-bold uppercase px-3 py-1 hover:bg-lm-cyan/10 disabled:opacity-40"
+                    >Add</button>
+                  </div>
+                </FormField>
+                <FormField label={`Bulk paste (${addPlayerPaste.split(/\r?\n/).filter((l) => l.trim().length >= 2).length} names)`}>
+                  <textarea
+                    value={addPlayerPaste}
+                    onChange={(e) => setAddPlayerPaste(e.target.value)}
+                    rows={5}
+                    placeholder="One name per line..."
+                    className="w-full bg-[#070710] border border-lm-cyan/30 text-lm-light text-sm px-2 py-1 placeholder:text-lm-mid focus:outline-none focus:border-lm-cyan resize-none"
+                  />
+                  <button
+                    onClick={pasteAddPlayers}
+                    disabled={addPlayerPaste.split(/\r?\n/).filter((l) => l.trim().length >= 2).length === 0}
+                    className="mt-1 border border-lm-cyan text-lm-cyan text-[10px] font-bold uppercase px-3 py-1 hover:bg-lm-cyan/10 disabled:opacity-40 w-full"
+                  >Load all</button>
+                </FormField>
+              </>
+            )}
+            <div className="flex justify-end pt-2 border-t border-lm-cyan/20">
+              <button onClick={() => setShowAddPlayer(false)} className="border border-lm-mid text-lm-gray text-[10px] font-bold uppercase px-3 py-1 hover:text-lm-light">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/*  WALK-IN POOL OVERLAY                                          */}
+      {/* ============================================================ */}
+      {showPool && (
+        <div className="fixed top-12 right-2 w-72 bg-[#0a0a18] border border-lm-cyan/40 z-40 max-h-[70vh] flex flex-col">
+          <div className="flex items-center justify-between px-3 py-1.5 border-b border-lm-cyan/30">
+            <span className="text-[10px] font-bold text-lm-cyan uppercase tracking-wider">Walk-In Pool ({walkInPool.length})</span>
+            <button onClick={() => setShowPool(false)} className="text-lm-gray hover:text-lm-light text-xs">✕</button>
+          </div>
+          <div className="px-3 py-2 border-b border-lm-cyan/20 flex gap-2">
+            <input
+              type="text"
+              value={walkInName}
+              onChange={(e) => setWalkInName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") addToWalkInPool(); }}
+              placeholder="ADD TO POOL..."
+              className="flex-1 bg-[#070710] border border-lm-cyan/30 text-lm-light text-[11px] px-2 py-1 placeholder:text-lm-mid focus:outline-none focus:border-lm-cyan uppercase"
+            />
+            <button onClick={addToWalkInPool} disabled={!walkInName.trim()} className="border border-lm-cyan text-lm-cyan text-[10px] font-bold uppercase px-2 py-1 hover:bg-lm-cyan/10 disabled:opacity-40">
+              Add
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {walkInPool.length === 0 ? (
+              <div className="px-3 py-4 text-center text-[10px] text-lm-mid uppercase">Empty</div>
+            ) : (
+              walkInPool.map((entry) => (
+                <div key={entry.id} className="flex items-center gap-2 px-3 py-1.5 border-b border-lm-cyan/10">
+                  <span className="text-[11px] text-lm-light flex-1">{entry.realName}</span>
+                  {selectedGameId && (
+                    <button onClick={() => assignWalkInToGame(entry)} className="border border-lm-cyan text-lm-cyan text-[9px] font-bold uppercase px-1.5 py-0.5 hover:bg-lm-cyan/10" title="Assign to selected game">+G</button>
+                  )}
+                  <button onClick={() => removeFromWalkInPool(entry.id)} className="text-lm-gray hover:text-lm-red text-[9px] font-bold">✕</button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/*  ACTIVITY (live feed) OVERLAY                                  */}
+      {/* ============================================================ */}
+      {showActivity && (
+        <div className="fixed top-12 right-2 w-80 bg-[#0a0a18] border border-lm-cyan/40 z-40 max-h-[70vh] flex flex-col">
+          <div className="flex items-center justify-between px-3 py-1.5 border-b border-lm-cyan/30">
+            <span className="text-[10px] font-bold text-lm-cyan uppercase tracking-wider">Live Feed ({feed.length})</span>
+            <button onClick={() => setShowActivity(false)} className="text-lm-gray hover:text-lm-light text-xs">✕</button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {feed.length === 0 ? (
+              <div className="px-3 py-4 text-center text-[10px] text-lm-mid uppercase">No submissions yet</div>
+            ) : (
+              feed.map((entry) => {
+                const teamColor = TEAMS.find((t) => t.key === entry.team)?.color;
+                return (
+                  <div key={entry.id} className="px-3 py-2 border-b border-lm-cyan/10">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-[10px] text-lm-light">{entry.realName}</span>
+                      <span className={`text-[9px] font-bold uppercase ${
+                        entry.status === "approved" ? "text-lm-cyan" :
+                        entry.status === "rejected" ? "text-lm-red" :
+                        "text-lm-yellow"
+                      }`}>
+                        {entry.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: teamColor || "var(--color-lm-cyan)" }}>
+                        {entry.codename}
+                      </span>
+                      {entry.vestNumber && <span className="text-[9px] text-lm-cyan/70">V{entry.vestNumber}</span>}
+                      {entry.status === "pending" && (
+                        <div className="ml-auto flex items-center gap-1">
+                          <button onClick={() => approveFeedEntry(entry)} className="border border-lm-cyan text-lm-cyan text-[9px] font-bold uppercase px-1.5 py-0.5 hover:bg-lm-cyan/10">OK</button>
+                          <button onClick={() => rejectFeedEntry(entry)} className="border border-lm-red/50 text-lm-red text-[9px] font-bold uppercase px-1.5 py-0.5 hover:bg-lm-red/10">X</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Sub-components                                                     */
+/* ------------------------------------------------------------------ */
+
+function ActionButton({
+  label, onClick, highlight, danger, alert, small,
+}: {
+  label: string;
+  onClick: () => void;
+  highlight?: boolean;
+  danger?: boolean;
+  alert?: boolean;
+  small?: boolean;
+}) {
+  const colorClass = danger
+    ? "border-lm-red/50 text-lm-red hover:bg-lm-red/10"
+    : highlight
+    ? "border-lm-cyan text-lm-cyan hover:bg-lm-cyan/15 bg-lm-cyan/5"
+    : alert
+    ? "border-lm-yellow text-lm-yellow hover:bg-lm-yellow/10 animate-pulse"
+    : "border-lm-cyan/30 text-lm-light hover:bg-lm-cyan/10 hover:border-lm-cyan/60";
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full ${small ? "py-2" : "py-3"} text-[10px] font-bold uppercase tracking-wider border bg-[#0a0a18] transition-colors ${colorClass}`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function Column({
+  header, width, children,
+}: {
+  header: string;
+  width: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`${width} shrink-0 flex flex-col border border-lm-cyan/30 bg-[#0a0a18] min-h-0`}>
+      <div className="px-2 py-1 border-b border-lm-cyan/20 text-[10px] font-bold text-lm-cyan/80 uppercase tracking-wider">
+        {header}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function ColumnFooter({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="border-t border-lm-cyan/20 text-[10px] font-bold text-lm-cyan/70 uppercase tracking-wider py-2 hover:bg-lm-cyan/10 hover:text-lm-cyan transition-colors"
+    >
+      {label}
+    </button>
+  );
+}
+
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-[10px] uppercase text-lm-gray tracking-wider mb-1">{label}</label>
+      {children}
     </div>
   );
 }
