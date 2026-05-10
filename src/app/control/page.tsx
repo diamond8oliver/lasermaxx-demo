@@ -88,7 +88,7 @@ export default function ControlPage() {
   const [showNewGame, setShowNewGame] = useState(false);
   const [ngTime, setNgTime] = useState("");
   const [ngLabel, setNgLabel] = useState("");
-  const [ngVestCount, setNgVestCount] = useState("20");
+  const [ngVestCount, setNgVestCount] = useState("48");
   const [ngGameMode, setNgGameMode] = useState<string>(GAME_MODES[0]);
   const [ngTeamMode, setNgTeamMode] = useState(false);
   const [ngBirthdayPerson, setNgBirthdayPerson] = useState("");
@@ -107,6 +107,13 @@ export default function ControlPage() {
   // Walk-in pool panel
   const [showPool, setShowPool] = useState(false);
   const [walkInName, setWalkInName] = useState("");
+
+  // Calendar overlay (full session list / delete actions)
+  const [showCalendar, setShowCalendar] = useState(false);
+
+  // Packs grid pagination
+  const PACKS_PER_PAGE = 30;
+  const [packsPage, setPacksPage] = useState(0);
 
   const selectedGameIdRef = useRef<number | null>(null);
   selectedGameIdRef.current = selectedGameId;
@@ -225,7 +232,7 @@ export default function ControlPage() {
         return;
       }
       setShowNewGame(false);
-      setNgTime(""); setNgLabel(""); setNgVestCount("20");
+      setNgTime(""); setNgLabel(""); setNgVestCount("48");
       setNgGameMode(GAME_MODES[0]); setNgTeamMode(false);
       setNgBirthdayPerson(""); setNgBirthdayMessage("");
       fetchGames();
@@ -379,7 +386,11 @@ export default function ControlPage() {
   const vestMap: Record<number, Player | undefined> = {};
   players.forEach((p) => { if (p.vestNumber) vestMap[p.vestNumber] = p; });
 
-  const totalPacks = selectedGame?.vestCount ?? 30;
+  const totalPacks = selectedGame?.vestCount ?? 48;
+  const totalPages = Math.max(1, Math.ceil(totalPacks / PACKS_PER_PAGE));
+  const currentPage = Math.min(packsPage, totalPages - 1);
+  const pageStart = currentPage * PACKS_PER_PAGE;
+  const pageEnd = Math.min(pageStart + PACKS_PER_PAGE, totalPacks);
   const pendingFeedCount = feed.filter((f) => f.status === "pending").length;
 
   const nextAvailableGame = games.find((g) => g.status === "draft" || g.status === "open");
@@ -424,72 +435,66 @@ export default function ControlPage() {
       {/* ============================================================ */}
       <div className="flex-1 flex min-h-0 p-2 gap-1 bg-[#070710]">
 
-        {/* ---- 1. Action sidebar ---- */}
-        <aside className="w-[88px] shrink-0 flex flex-col gap-1">
-          <ActionButton label="Cancel" onClick={() => { setSelectedGameId(null); setSelectedGame(null); setPlayers([]); }} />
-          <ActionButton label="New Group" highlight onClick={() => setShowNewGame(true)} />
-          <ActionButton label="Calendar" onClick={() => {}} />
-          <ActionButton label="Edit Game" onClick={() => selectedGameId && handleGameStatus(selectedGameId, "open")} />
-          <ActionButton label="Edit Group" onClick={() => setShowPool((s) => !s)} />
+        {/* ---- 1. Action sidebar — 5 buttons matching LMX photo ---- */}
+        <aside className="w-[92px] shrink-0 flex flex-col gap-1">
           <ActionButton
-            label={pendingFeedCount > 0 ? `Activity (${pendingFeedCount})` : "Activity"}
-            small
-            alert={pendingFeedCount > 0}
-            onClick={() => setShowActivity((s) => !s)}
+            label="Cancel"
+            selected={!selectedGameId}
+            onClick={() => { setSelectedGameId(null); setSelectedGame(null); setPlayers([]); }}
           />
-          {selectedGameId && (
-            <ActionButton label="Delete" small danger onClick={() => handleDeleteGame(selectedGameId)} />
+          <ActionButton label="New Group" onClick={() => setShowNewGame(true)} />
+          <ActionButton label="Calendar" onClick={() => setShowCalendar(true)} />
+          <ActionButton
+            label="Edit Game"
+            disabled={!selectedGameId}
+            onClick={() => selectedGameId && setShowAddPlayer(true)}
+          />
+          <ActionButton label="Edit Group" onClick={() => setShowPool((s) => !s)} />
+
+          {/* Subtle activity indicator (not in photo, but needed) */}
+          {pendingFeedCount > 0 && (
+            <button
+              onClick={() => setShowActivity(true)}
+              className="mt-auto text-[9px] uppercase tracking-wider text-lm-yellow border border-lm-yellow/50 py-1.5 hover:bg-lm-yellow/10 animate-pulse"
+            >
+              {pendingFeedCount} pending
+            </button>
           )}
         </aside>
 
-        {/* ---- 2. Time column ---- */}
-        <Column header="Time" width="w-[150px]">
-          <div className="flex-1 overflow-y-auto">
-            {/* "Next Available" pinned cell */}
-            {nextAvailableGame && (
-              <button
-                onClick={() => selectGame(nextAvailableGame.id)}
-                className={`w-full text-left px-2 py-2 border-b border-lm-cyan/10 transition-colors ${
-                  selectedGameId === nextAvailableGame.id
-                    ? "bg-lm-cyan/15 outline outline-1 outline-lm-cyan -outline-offset-1"
-                    : "hover:bg-lm-cyan/5"
-                }`}
-              >
-                <div className="text-[9px] uppercase tracking-wider text-lm-cyan/70">Next Available</div>
-                <div className="text-base font-bold text-lm-light tabular-nums">{formatTime(nextAvailableGame.startTime)}</div>
-              </button>
-            )}
-            {/* All other games */}
-            {games.filter((g) => g.id !== nextAvailableGame?.id).map((game) => {
-              const isSel = selectedGameId === game.id;
-              const count = game._count?.players ?? 0;
-              return (
-                <button
-                  key={game.id}
-                  onClick={() => selectGame(game.id)}
-                  className={`w-full text-left px-2 py-1.5 border-b border-lm-cyan/10 transition-colors ${
-                    isSel
-                      ? "bg-lm-cyan/15 outline outline-1 outline-lm-cyan -outline-offset-1"
-                      : "hover:bg-lm-cyan/5"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className={`text-sm font-bold tabular-nums ${isSel ? "text-lm-cyan" : "text-lm-light"}`}>
-                      {formatTime(game.startTime)}
-                    </span>
-                    <span className="text-[9px] text-lm-gray tabular-nums">{count}P</span>
-                  </div>
-                  {game.groupLabel && (
-                    <div className="text-[9px] text-lm-gray truncate">{game.groupLabel}</div>
-                  )}
-                </button>
-              );
-            })}
-            {games.length === 0 && (
-              <div className="px-2 py-3 text-center text-[10px] text-lm-mid uppercase">No games</div>
-            )}
+        {/* ---- 2. Time column — Next Available + Other timespan ---- */}
+        <Column header="Time" width="w-[120px]">
+          <div className="flex-1 flex flex-col">
+            {/* Next Available — large highlighted cell */}
+            <button
+              onClick={() => nextAvailableGame && selectGame(nextAvailableGame.id)}
+              disabled={!nextAvailableGame}
+              className={`px-2 py-3 border-b border-lm-cyan/20 transition-colors text-center disabled:opacity-50 ${
+                nextAvailableGame && selectedGameId === nextAvailableGame.id
+                  ? "bg-lm-cyan/15 outline outline-1 outline-lm-cyan -outline-offset-1"
+                  : "hover:bg-lm-cyan/8"
+              }`}
+            >
+              <div className="text-[9px] uppercase tracking-wider text-lm-cyan/70 leading-tight">
+                Next<br/>Available
+              </div>
+              <div className="text-lg font-bold text-lm-light tabular-nums mt-1">
+                {nextAvailableGame ? formatTime(nextAvailableGame.startTime) : "—"}
+              </div>
+            </button>
+
+            {/* Other timespan — second cell */}
+            <button
+              onClick={() => setShowNewGame(true)}
+              className="px-2 py-3 border-b border-lm-cyan/20 hover:bg-lm-cyan/8 transition-colors text-center"
+            >
+              <div className="text-[10px] uppercase tracking-wider text-lm-light leading-tight">
+                Other<br/>timespan
+              </div>
+            </button>
+
+            <div className="flex-1" />
           </div>
-          <ColumnFooter label="Other timespan" onClick={() => setShowNewGame(true)} />
         </Column>
 
         {/* ---- 3. Game style column ---- */}
@@ -549,26 +554,23 @@ export default function ControlPage() {
         <Column header="Packs" width="flex-1">
           <div className="flex-1 overflow-y-auto p-2">
             <div className="grid grid-cols-6 gap-1">
-              {Array.from({ length: totalPacks }).map((_, i) => {
-                const num = i + 1;
+              {Array.from({ length: pageEnd - pageStart }).map((_, i) => {
+                const num = pageStart + i + 1;
                 const player = vestMap[num];
                 const teamColor = TEAMS.find((t) => t.key === player?.team)?.color;
                 return (
                   <div
                     key={num}
-                    className="aspect-square border border-lm-cyan/30 flex items-center justify-center relative bg-[#0a0a18] hover:border-lm-cyan/60 transition-colors group"
+                    className="aspect-square border border-lm-cyan/30 flex items-center justify-center relative bg-[#0a0a18] hover:border-lm-cyan/60 transition-colors"
                     style={teamColor ? { borderColor: teamColor, backgroundColor: `${teamColor}22` } : {}}
                     title={player ? `${player.realName} (${player.codename || "no codename"})` : `Pack ${num}`}
                   >
-                    {/* Shield/vest icon */}
                     <svg viewBox="0 0 24 24" className="w-5 h-5" fill={teamColor || "#1a1a2a"} stroke={teamColor || "#00ffcc"} strokeWidth="1.5" opacity={player ? 1 : 0.7}>
                       <path d="M12 2 L20 5 V12 C20 17 16 21 12 22 C8 21 4 17 4 12 V5 Z" />
                     </svg>
-                    {/* Vest number */}
                     <span className="absolute bottom-0 right-0.5 text-[8px] font-bold text-lm-cyan/70 tabular-nums leading-none">
                       {num}
                     </span>
-                    {/* Player initial */}
                     {player && (
                       <span className="absolute top-0 left-0.5 text-[8px] font-bold leading-none" style={{ color: teamColor || "#00ffcc" }}>
                         {(player.codename || player.realName).charAt(0).toUpperCase()}
@@ -579,8 +581,25 @@ export default function ControlPage() {
               })}
             </div>
           </div>
-          <div className="px-2 py-1 border-t border-lm-cyan/20 text-right">
-            <span className="text-[10px] text-lm-cyan/70 tabular-nums">1 - {totalPacks} &rarr;</span>
+          {/* Pagination footer — ← / → controls */}
+          <div className="px-2 py-1 border-t border-lm-cyan/20 flex items-center justify-end gap-2">
+            <button
+              onClick={() => setPacksPage((p) => Math.max(0, p - 1))}
+              disabled={currentPage === 0}
+              className="text-[12px] text-lm-cyan/70 hover:text-lm-cyan disabled:opacity-30 disabled:cursor-not-allowed leading-none px-1"
+            >
+              &larr;
+            </button>
+            <span className="text-[10px] text-lm-cyan/70 tabular-nums">
+              {pageStart + 1} - {pageEnd}
+            </span>
+            <button
+              onClick={() => setPacksPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={currentPage >= totalPages - 1}
+              className="text-[12px] text-lm-cyan/70 hover:text-lm-cyan disabled:opacity-30 disabled:cursor-not-allowed leading-none px-1"
+            >
+              &rarr;
+            </button>
           </div>
         </Column>
 
@@ -816,6 +835,59 @@ export default function ControlPage() {
       )}
 
       {/* ============================================================ */}
+      {/*  CALENDAR — full session list with delete                      */}
+      {/* ============================================================ */}
+      {showCalendar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowCalendar(false)}>
+          <div className="bg-[#0a0a18] border border-lm-cyan/40 w-[420px] max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-3 py-2 border-b border-lm-cyan/30">
+              <span className="text-[11px] font-bold text-lm-cyan uppercase tracking-[0.2em]">Calendar &middot; Sessions</span>
+              <button onClick={() => setShowCalendar(false)} className="text-lm-gray hover:text-lm-light text-xs">✕</button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {games.length === 0 ? (
+                <div className="px-3 py-6 text-center text-[11px] text-lm-mid uppercase">No sessions today</div>
+              ) : (
+                games.map((g) => {
+                  const count = g._count?.players ?? 0;
+                  const isSel = selectedGameId === g.id;
+                  return (
+                    <div
+                      key={g.id}
+                      className={`flex items-center gap-2 px-3 py-2 border-b border-lm-cyan/10 ${isSel ? "bg-lm-cyan/10" : ""}`}
+                    >
+                      <button
+                        onClick={() => { selectGame(g.id); setShowCalendar(false); }}
+                        className="flex-1 text-left flex items-center gap-3"
+                      >
+                        <span className="text-sm font-bold text-lm-light tabular-nums w-12">{formatTime(g.startTime)}</span>
+                        <span className="text-[10px] text-lm-gray flex-1 truncate">{g.groupLabel || "—"}</span>
+                        <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 border ${
+                          g.status === "open" ? "border-lm-cyan text-lm-cyan" :
+                          g.status === "in_progress" ? "border-lm-yellow text-lm-yellow" :
+                          g.status === "completed" ? "border-lm-blue text-lm-blue" :
+                          "border-lm-mid text-lm-gray"
+                        }`}>{g.status.replace("_", " ")}</span>
+                        <span className="text-[9px] text-lm-mid tabular-nums w-8 text-right">{count}P</span>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteGame(g.id)}
+                        className="text-[9px] font-bold text-lm-red hover:bg-lm-red/10 border border-lm-red/30 px-1.5 py-0.5 uppercase"
+                      >Del</button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <div className="px-3 py-2 border-t border-lm-cyan/20 flex justify-end gap-2">
+              <button onClick={() => { setShowNewGame(true); setShowCalendar(false); }} className="border border-lm-cyan text-lm-cyan text-[10px] font-bold uppercase px-3 py-1 hover:bg-lm-cyan/10">+ New Session</button>
+              <button onClick={() => setShowCalendar(false)} className="border border-lm-mid text-lm-gray text-[10px] font-bold uppercase px-3 py-1 hover:text-lm-light">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
       {/*  ACTIVITY (live feed) OVERLAY                                  */}
       {/* ============================================================ */}
       {showActivity && (
@@ -871,7 +943,7 @@ export default function ControlPage() {
 /* ------------------------------------------------------------------ */
 
 function ActionButton({
-  label, onClick, highlight, danger, alert, small,
+  label, onClick, highlight, danger, alert, small, selected, disabled,
 }: {
   label: string;
   onClick: () => void;
@@ -879,9 +951,15 @@ function ActionButton({
   danger?: boolean;
   alert?: boolean;
   small?: boolean;
+  selected?: boolean;
+  disabled?: boolean;
 }) {
-  const colorClass = danger
+  const colorClass = disabled
+    ? "border-lm-cyan/15 text-lm-mid cursor-not-allowed"
+    : danger
     ? "border-lm-red/50 text-lm-red hover:bg-lm-red/10"
+    : selected
+    ? "border-lm-cyan text-lm-cyan bg-lm-cyan/12 outline outline-1 outline-lm-cyan -outline-offset-1"
     : highlight
     ? "border-lm-cyan text-lm-cyan hover:bg-lm-cyan/15 bg-lm-cyan/5"
     : alert
@@ -890,7 +968,8 @@ function ActionButton({
   return (
     <button
       onClick={onClick}
-      className={`w-full ${small ? "py-2" : "py-3"} text-[10px] font-bold uppercase tracking-wider border bg-[#0a0a18] transition-colors ${colorClass}`}
+      disabled={disabled}
+      className={`w-full ${small ? "py-2" : "py-3.5"} text-[10px] font-bold uppercase tracking-wider border bg-[#0a0a18] transition-colors ${colorClass}`}
     >
       {label}
     </button>
