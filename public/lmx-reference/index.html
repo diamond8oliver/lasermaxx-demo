@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1280" />
+  <title>LMXbooking v6.2.3.0 — forensic prototype</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="app">
+
+    <!-- 1. cyan LED strip -->
+    <div class="led-strip"></div>
+
+    <!-- 2. top header: LASERMAXX brand + nav tabs -->
+    <header class="header">
+      <div class="brand">
+        <div class="brand-text">
+          <div class="logo">LASERMAXX</div>
+          <div class="tagline">LET'S PLAY!</div>
+        </div>
+      </div>
+      <nav class="tabs">
+        <button class="tab dim">Standby</button>
+        <button class="tab">Play Instruction</button>
+        <button class="tab">Show next</button>
+        <button class="tab">Start Game</button>
+        <button class="tab">Application form</button>
+      </nav>
+    </header>
+
+    <!-- 3. main area (grid background + 6-column content) -->
+    <main class="main">
+
+      <!-- left action rail -->
+      <aside class="rail">
+        <button class="action-btn">
+          <svg class="icon" viewBox="0 0 32 32" aria-hidden="true">
+            <path d="M11 5 L21 5 L23 9 L23 25 C23 27 22 28 20 28 L12 28 C10 28 9 27 9 25 L9 9 Z M13 11 L19 11 M13 15 L19 15 M13 19 L19 19" stroke="#fff" stroke-width="1.4" fill="none"/>
+          </svg>
+          <span class="label">New Game</span>
+        </button>
+        <button class="action-btn">
+          <svg class="icon" viewBox="0 0 32 32" aria-hidden="true">
+            <circle cx="9" cy="11" r="3" fill="#fff"/>
+            <circle cx="23" cy="11" r="3" fill="#fff"/>
+            <circle cx="16" cy="9" r="3" fill="#fff"/>
+            <path d="M3 24 C3 20 6 18 9 18 C12 18 15 20 15 24" stroke="#fff" stroke-width="1.5" fill="none"/>
+            <path d="M17 24 C17 20 20 18 23 18 C26 18 29 20 29 24" stroke="#fff" stroke-width="1.5" fill="none"/>
+            <path d="M10 24 C10 20 13 17 16 17 C19 17 22 20 22 24" stroke="#fff" stroke-width="1.5" fill="none"/>
+          </svg>
+          <span class="label">New Group</span>
+        </button>
+        <button class="action-btn">
+          <svg class="icon" viewBox="0 0 32 32" aria-hidden="true">
+            <rect x="4" y="6" width="24" height="22" stroke="#fff" stroke-width="1.5" fill="none"/>
+            <path d="M4 12 L28 12" stroke="#fff" stroke-width="1.5"/>
+            <path d="M10 3 L10 9 M22 3 L22 9" stroke="#fff" stroke-width="1.5"/>
+            <rect x="8" y="16" width="3" height="3" fill="#fff"/>
+            <rect x="14" y="16" width="3" height="3" fill="#fff"/>
+            <rect x="20" y="16" width="3" height="3" fill="#fff"/>
+            <rect x="8" y="22" width="3" height="3" fill="#fff"/>
+            <rect x="14" y="22" width="3" height="3" fill="#fff"/>
+          </svg>
+          <span class="label">Calendar</span>
+        </button>
+        <button class="action-btn">
+          <svg class="icon" viewBox="0 0 32 32" aria-hidden="true">
+            <path d="M11 5 L21 5 L23 9 L23 25 C23 27 22 28 20 28 L12 28 C10 28 9 27 9 25 L9 9 Z" stroke="#fff" stroke-width="1.4" fill="none"/>
+            <path d="M14 20 L18 14 L21 17 L17 23 L14 23 Z" fill="#fff"/>
+          </svg>
+          <span class="label">Edit Game</span>
+        </button>
+        <button class="action-btn">
+          <svg class="icon" viewBox="0 0 32 32" aria-hidden="true">
+            <circle cx="9" cy="11" r="3" fill="#fff"/>
+            <circle cx="23" cy="11" r="3" fill="#fff"/>
+            <circle cx="16" cy="9" r="3" fill="#fff"/>
+            <path d="M3 24 C3 20 6 18 9 18 C12 18 15 20 15 24" stroke="#fff" stroke-width="1.5" fill="none"/>
+            <path d="M17 24 C17 20 20 18 23 18 C26 18 29 20 29 24" stroke="#fff" stroke-width="1.5" fill="none"/>
+            <path d="M22 28 L26 22 L29 25 L25 31 L22 31 Z" fill="#fff"/>
+          </svg>
+          <span class="label">Edit Group</span>
+        </button>
+      </aside>
+
+      <!-- 6-column inner panels -->
+      <section class="panels">
+
+        <!-- col 1: Time -->
+        <div class="panel">
+          <div class="panel-header">Time</div>
+          <div class="panel-body">
+            <div class="time-cell active">
+              <div class="label">Next<br/>Available</div>
+              <div class="value">14:30</div>
+            </div>
+            <div class="time-cell">
+              <div class="label">Other<br/>timespan</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- col 2: Game style -->
+        <div class="panel">
+          <div class="panel-header">Game style</div>
+          <div class="panel-body">
+            <div class="style-row"><span class="num">1</span><span>10 Min Free for all</span></div>
+            <div class="style-row"><span class="num">2</span><span>10 Min Team battle</span></div>
+            <div class="style-row active"><span class="num">3</span><span>15 Min Free for all</span></div>
+            <div class="style-row"><span class="num">4</span><span>15 Min Team battle</span></div>
+            <div class="style-row"><span class="num">5</span><span>15 Min Domination</span></div>
+            <div class="style-row"><span class="num">6</span><span>20 Min Free for all</span></div>
+            <div class="style-row"><span class="num">7</span><span>20 Min Team battle</span></div>
+            <div class="style-row"><span class="num">8</span><span>20 Min Capture point</span></div>
+            <div class="style-row"><span class="num">9</span><span>30 Min Tournament</span></div>
+          </div>
+          <div class="panel-footer">Select..</div>
+        </div>
+
+        <!-- col 3: Teams -->
+        <div class="panel">
+          <div class="panel-header">Teams</div>
+          <div class="panel-body">
+            <div class="team-row t-red"><span class="name"><span class="swatch"></span>Red Team</span><span class="count">4</span></div>
+            <div class="team-row t-green"><span class="name"><span class="swatch"></span>Green Team</span><span class="count">3</span></div>
+            <div class="team-row t-blue"><span class="name"><span class="swatch"></span>Blue Team</span><span class="count">4</span></div>
+            <div class="team-row t-pink dim"><span class="name"><span class="swatch"></span>Pink Team</span><span class="count"></span></div>
+            <div class="team-row t-yellow dim"><span class="name"><span class="swatch"></span>Yellow Team</span><span class="count"></span></div>
+            <div class="team-row t-ocean dim"><span class="name"><span class="swatch"></span>Ocean Team</span><span class="count"></span></div>
+          </div>
+        </div>
+
+        <!-- col 4: Packs grid -->
+        <div class="panel">
+          <div class="panel-header">Packs</div>
+          <div class="packs-body">
+            <!-- 30 packs (1-30 of 48). Mixed assigned + empty. -->
+            <div class="pack assigned team-red"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z"/></svg><span class="num">1</span></div>
+            <div class="pack assigned team-red"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z"/></svg><span class="num">2</span></div>
+            <div class="pack"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z" fill="#5a5d62"/></svg><span class="num">3</span></div>
+            <div class="pack assigned team-green"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z"/></svg><span class="num">4</span></div>
+            <div class="pack assigned team-blue"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z"/></svg><span class="num">5</span></div>
+            <div class="pack"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z" fill="#5a5d62"/></svg><span class="num">6</span></div>
+
+            <div class="pack assigned team-red"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z"/></svg><span class="num">7</span></div>
+            <div class="pack"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z" fill="#5a5d62"/></svg><span class="num">8</span></div>
+            <div class="pack assigned team-green"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z"/></svg><span class="num">9</span></div>
+            <div class="pack assigned team-blue"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z"/></svg><span class="num">10</span></div>
+            <div class="pack"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z" fill="#5a5d62"/></svg><span class="num">11</span></div>
+            <div class="pack assigned team-blue"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z"/></svg><span class="num">12</span></div>
+
+            <div class="pack"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z" fill="#5a5d62"/></svg><span class="num">13</span></div>
+            <div class="pack assigned team-red"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z"/></svg><span class="num">14</span></div>
+            <div class="pack"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z" fill="#5a5d62"/></svg><span class="num">15</span></div>
+            <div class="pack assigned team-green"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z"/></svg><span class="num">16</span></div>
+            <div class="pack"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z" fill="#5a5d62"/></svg><span class="num">17</span></div>
+            <div class="pack assigned team-blue"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z"/></svg><span class="num">18</span></div>
+
+            <div class="pack"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z" fill="#5a5d62"/></svg><span class="num">19</span></div>
+            <div class="pack"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z" fill="#5a5d62"/></svg><span class="num">20</span></div>
+            <div class="pack"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z" fill="#5a5d62"/></svg><span class="num">21</span></div>
+            <div class="pack"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z" fill="#5a5d62"/></svg><span class="num">22</span></div>
+            <div class="pack"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z" fill="#5a5d62"/></svg><span class="num">23</span></div>
+            <div class="pack"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z" fill="#5a5d62"/></svg><span class="num">24</span></div>
+
+            <div class="pack"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z" fill="#5a5d62"/></svg><span class="num">25</span></div>
+            <div class="pack"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z" fill="#5a5d62"/></svg><span class="num">26</span></div>
+            <div class="pack"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z" fill="#5a5d62"/></svg><span class="num">27</span></div>
+            <div class="pack"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z" fill="#5a5d62"/></svg><span class="num">28</span></div>
+            <div class="pack"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z" fill="#5a5d62"/></svg><span class="num">29</span></div>
+            <div class="pack"><svg class="vest" viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z" fill="#5a5d62"/></svg><span class="num">30</span></div>
+          </div>
+          <div class="pager">
+            <button>&larr;</button>
+            <span>1 - 30 / 48</span>
+            <button>&rarr;</button>
+          </div>
+        </div>
+
+        <!-- col 5: Right info column (action buttons + Game info panel) -->
+        <div>
+          <div class="info-top-actions">
+            <button class="mini-btn">Packs on</button>
+            <button class="mini-btn">Packs off</button>
+            <button class="mini-btn primary">Add</button>
+          </div>
+          <div class="info-panel">
+            <div class="info-title">Game</div>
+            <div class="info-group">COMP NIGHT</div>
+            <div class="info-list">
+              <div class="info-row red"><span class="idx">1</span>-<span class="name">FALCON</span><span class="vest">(01)</span></div>
+              <div class="info-row red"><span class="idx">2</span>-<span class="name">HUNTER</span><span class="vest">(02)</span></div>
+              <div class="info-row red"><span class="idx">3</span>-<span class="name">VIPER</span><span class="vest">(07)</span></div>
+              <div class="info-row red"><span class="idx">4</span>-<span class="name">RAVEN</span><span class="vest">(14)</span></div>
+              <div class="info-row green"><span class="idx">5</span>-<span class="name">GHOST</span><span class="vest">(04)</span></div>
+              <div class="info-row green"><span class="idx">6</span>-<span class="name">SHADOW</span><span class="vest">(09)</span></div>
+              <div class="info-row green"><span class="idx">7</span>-<span class="name">PHANTOM</span><span class="vest">(16)</span></div>
+              <div class="info-row blue"><span class="idx">8</span>-<span class="name">STORM</span><span class="vest">(05)</span></div>
+              <div class="info-row blue"><span class="idx">9</span>-<span class="name">BLADE</span><span class="vest">(10)</span></div>
+              <div class="info-row blue"><span class="idx">10</span>-<span class="name">WOLF</span><span class="vest">(12)</span></div>
+              <div class="info-row blue"><span class="idx">11</span>-<span class="name">ECHO</span><span class="vest">(18)</span></div>
+            </div>
+            <button class="mini-btn primary" style="border-radius:0;">Save Changes</button>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- 4. footer -->
+    <footer class="footer">
+      <div class="footer-left">
+        <button class="icon-btn" title="Activity">
+          <svg viewBox="0 0 24 24"><path d="M4 4h16v3H4zM4 9h10v3H4zM4 14h13v3H4z"/></svg>
+        </button>
+        <button class="icon-btn" title="Walk-in pool">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M6 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+        </button>
+        <div class="vests">
+          <svg viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z"/></svg>
+          <span>48 Vests</span>
+        </div>
+        <div class="vests dim">
+          <svg viewBox="0 0 24 24"><path d="M8 3 L16 3 L17 7 L20 8 L20 21 L17 21 L16 12 L8 12 L7 21 L4 21 L4 8 L7 7 Z"/></svg>
+          <span>0 Junior vests</span>
+        </div>
+      </div>
+      <div class="footer-center">
+        &copy; 2026 - All rights reserved - LaserMaxx Lasergames B.V. - LMXbooking v6.2.3.0
+      </div>
+      <div class="footer-right">
+        <button>Backup</button>
+        <button>Support</button>
+      </div>
+    </footer>
+
+  </div>
+</body>
+</html>
