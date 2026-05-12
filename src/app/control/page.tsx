@@ -48,12 +48,6 @@ function gameModeDuration(mode: string): string {
   return m ? `${m[1]} Minutes` : "15 Minutes";
 }
 
-function gameModeType(mode: string, isTeamMode: boolean): string {
-  if (/team/i.test(mode) || isTeamMode) return "Team";
-  if (/free for all|battle/i.test(mode)) return "FFA";
-  return "Solo";
-}
-
 /* ------------------------------------------------------------------ */
 /*  Feed entry                                                         */
 /* ------------------------------------------------------------------ */
@@ -400,67 +394,111 @@ export default function ControlPage() {
   /* ================================================================ */
 
   return (
-    <div className="flex flex-col h-screen bg-lm-black text-lm-light overflow-hidden">
+    <div className="flex flex-col h-screen bg-[#1c1f24] text-lm-light overflow-hidden">
+
+      {/* Cyan window-title strip */}
+      <div className="h-1.5 shrink-0 bg-gradient-to-b from-lm-cyan to-[#00cca0]" />
 
       {/* ============================================================ */}
-      {/*  HEADER — LASERMAXX brand + tab bar (right)                   */}
+      {/*  HEADER — LASERMAXX brand + tab bar                            */}
       {/* ============================================================ */}
-      <header className="h-9 shrink-0 bg-[#070710] border-b border-lm-cyan/40 flex items-stretch">
-        <div className="flex items-center px-3 gap-2 border-r border-lm-cyan/30 bg-[#0a0a18]">
-          <span className="inline-block w-3 h-3 bg-lm-cyan" style={{ clipPath: "polygon(50% 0, 100% 50%, 50% 100%, 0 50%)" }} />
-          <span className="text-lm-cyan font-bold text-[13px] tracking-[0.18em]">LASERMAXX</span>
+      <header className="h-12 shrink-0 bg-black flex items-stretch border-b border-black">
+        <div className="flex items-center px-4 gap-2.5">
+          {/* Starburst icon */}
+          <svg viewBox="0 0 24 24" className="w-6 h-6" fill="white">
+            <path d="M12 2 L13.5 8.5 L20 6 L15.5 11 L22 12.5 L15.5 14 L20 19 L13.5 16 L12 22 L10.5 16 L4 19 L8.5 14 L2 12.5 L8.5 11 L4 6 L10.5 8.5 Z" />
+          </svg>
+          <div className="leading-none">
+            <div className="text-white font-black text-[20px] tracking-[0.05em] italic" style={{ fontFamily: "Impact, 'Arial Black', sans-serif", letterSpacing: "0.02em" }}>
+              LASERMAXX
+            </div>
+            <div className="text-lm-cyan text-[8px] tracking-[0.35em] uppercase mt-0.5 font-bold">
+              LET&rsquo;S PLAY!
+            </div>
+          </div>
         </div>
-        <div className="ml-auto flex items-stretch text-[10px] uppercase tracking-wider">
-          {["Stamcards", "Play instructor", "Show next", "Start Game", "Application data"].map((t, i) => (
-            <button
-              key={t}
-              onClick={() => {
-                if (t === "Start Game" && selectedGameId && selectedGame?.status === "open")
-                  handleGameStatus(selectedGameId, "in_progress");
-              }}
-              className={`px-4 flex items-center border-l border-lm-cyan/20 transition-colors ${
-                i === 3 && selectedGame?.status === "open"
-                  ? "bg-lm-cyan/10 text-lm-cyan font-bold"
-                  : "text-lm-gray hover:text-lm-light hover:bg-[#0e0e1a]"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
+        <div className="ml-auto flex items-stretch text-[11px] tracking-wide">
+          {["Standby", "Play Instruction", "Show next", "Start Game", "Application form"].map((t) => {
+            const isStart = t === "Start Game" && selectedGameId && selectedGame?.status === "open";
+            return (
+              <button
+                key={t}
+                onClick={() => {
+                  if (t === "Start Game" && selectedGameId && selectedGame?.status === "open")
+                    handleGameStatus(selectedGameId, "in_progress");
+                }}
+                className={`px-5 flex items-center transition-colors ${
+                  isStart
+                    ? "text-lm-cyan font-bold"
+                    : "text-[#8a8d92] hover:text-white"
+                }`}
+              >
+                {t}
+              </button>
+            );
+          })}
         </div>
       </header>
 
       {/* ============================================================ */}
-      {/*  MAIN — 6-column grid                                         */}
+      {/*  MAIN — graph-paper bg + 5 big action cards + dynamic grid   */}
       {/* ============================================================ */}
-      <div className="flex-1 flex min-h-0 p-2 gap-1 bg-[#070710]">
+      <div className="flex-1 flex min-h-0 lmx-grid-bg">
 
-        {/* ---- 1. Action sidebar — 5 buttons matching LMX photo ---- */}
-        <aside className="w-[92px] shrink-0 flex flex-col gap-1">
-          <ActionButton
-            label="Cancel"
-            selected={!selectedGameId}
-            onClick={() => { setSelectedGameId(null); setSelectedGame(null); setPlayers([]); }}
+        {/* ---- 1. Action sidebar — 5 BIG card buttons ---- */}
+        <aside className="w-[108px] shrink-0 flex flex-col gap-1.5 p-1.5">
+          <BigActionButton
+            label="New Game"
+            icon="game"
+            selected={false}
+            onClick={() => setShowNewGame(true)}
           />
-          <ActionButton label="New Group" onClick={() => setShowNewGame(true)} />
-          <ActionButton label="Calendar" onClick={() => setShowCalendar(true)} />
-          <ActionButton
+          <BigActionButton
+            label="New Group"
+            icon="group"
+            onClick={() => setShowNewGame(true)}
+          />
+          <BigActionButton
+            label="Calendar"
+            icon="calendar"
+            onClick={() => setShowCalendar(true)}
+          />
+          <BigActionButton
             label="Edit Game"
+            icon="game"
             disabled={!selectedGameId}
             onClick={() => selectedGameId && setShowAddPlayer(true)}
           />
-          <ActionButton label="Edit Group" onClick={() => setShowPool((s) => !s)} />
+          <BigActionButton
+            label="Edit Group"
+            icon="group"
+            onClick={() => setShowPool((s) => !s)}
+          />
 
-          {/* Subtle activity indicator (not in photo, but needed) */}
           {pendingFeedCount > 0 && (
             <button
               onClick={() => setShowActivity(true)}
-              className="mt-auto text-[9px] uppercase tracking-wider text-lm-yellow border border-lm-yellow/50 py-1.5 hover:bg-lm-yellow/10 animate-pulse"
+              className="mt-auto text-[9px] uppercase tracking-wider text-black font-bold bg-lm-yellow py-1.5 hover:bg-lm-yellow/80 animate-pulse"
             >
               {pendingFeedCount} pending
             </button>
           )}
         </aside>
+
+        {/* ---- Idle state — empty graph paper when nothing selected ---- */}
+        {!selectedGameId ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center opacity-30">
+              <svg viewBox="0 0 24 24" className="w-16 h-16 mx-auto mb-3 text-lm-cyan" fill="currentColor">
+                <path d="M12 2 L13.5 8.5 L20 6 L15.5 11 L22 12.5 L15.5 14 L20 19 L13.5 16 L12 22 L10.5 16 L4 19 L8.5 14 L2 12.5 L8.5 11 L4 6 L10.5 8.5 Z" />
+              </svg>
+              <p className="text-[11px] text-lm-light/60 uppercase tracking-[0.2em]">
+                Press &ldquo;New Game&rdquo; or &ldquo;Calendar&rdquo;
+              </p>
+            </div>
+          </div>
+        ) : (
+        <div className="flex-1 flex min-h-0 p-1.5 gap-1.5">
 
         {/* ---- 2. Time column — Next Available + Other timespan ---- */}
         <Column header="Time" width="w-[120px]">
@@ -604,13 +642,13 @@ export default function ControlPage() {
         </Column>
 
         {/* ---- 6. Right panel — Packs on/off + Game info ---- */}
-        <aside className="w-[170px] shrink-0 flex flex-col gap-1">
-          <ActionButton label="Packs on" small onClick={() => {}} />
-          <ActionButton label="Packs off" small onClick={() => {}} />
-          <ActionButton label="Add" small highlight onClick={() => setShowAddPlayer(true)} />
+        <aside className="w-[160px] shrink-0 flex flex-col gap-1.5">
+          <button onClick={() => {}} className="w-full py-2 text-[10px] font-bold uppercase tracking-wider border border-[#3a3e46] bg-[#262a31] text-white hover:bg-[#2e323a]">Packs on</button>
+          <button onClick={() => {}} className="w-full py-2 text-[10px] font-bold uppercase tracking-wider border border-[#3a3e46] bg-[#262a31] text-white hover:bg-[#2e323a]">Packs off</button>
+          <button onClick={() => setShowAddPlayer(true)} className="w-full py-2 text-[10px] font-bold uppercase tracking-wider border border-lm-cyan bg-lm-cyan/15 text-lm-cyan hover:bg-lm-cyan/25">Add</button>
 
-          <div className="flex-1 flex flex-col border border-lm-cyan/30 bg-[#0a0a18] mt-1 min-h-0">
-            <div className="px-2 py-1 border-b border-lm-cyan/20 text-[10px] font-bold text-lm-cyan/80 uppercase tracking-wider">
+          <div className="flex-1 flex flex-col border border-[#3a3e46] bg-[#262a31]/95 mt-1 min-h-0 backdrop-blur-sm">
+            <div className="px-2 py-1.5 border-b border-[#3a3e46] text-[10px] font-bold text-white uppercase tracking-wider">
               Game
             </div>
             {selectedGame ? (
@@ -654,30 +692,52 @@ export default function ControlPage() {
               onClick={() => setShowNewGame(true)}
               className="border-t border-lm-cyan/30 text-lm-cyan hover:bg-lm-cyan/10 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors"
             >
-              Create
+              Save Changes
             </button>
           </div>
         </aside>
+        </div>
+        )}
       </div>
 
       {/* ============================================================ */}
-      {/*  FOOTER — info strip                                          */}
+      {/*  FOOTER — vest counts (left) + Backup/Support (right)         */}
       {/* ============================================================ */}
-      <footer className="h-7 shrink-0 bg-[#0a0a18] border-t border-lm-cyan/30 flex items-center px-3 text-[10px] text-lm-gray tracking-wide">
-        {selectedGame ? (
-          <>
-            <span className="text-lm-light">{formatLongDate(selectedGame.startTime)} {formatTime(selectedGame.startTime)}</span>
-            <span className="mx-3 text-lm-mid">|</span>
-            <span>{selectedGame.gameMode}</span>
-            <span className="mx-3 text-lm-mid">/</span>
-            <span>Type: <span className="text-lm-cyan">{gameModeType(selectedGame.gameMode, selectedGame.isTeamMode)}</span></span>
-            <span className="mx-3 text-lm-mid">/</span>
-            <span>Duration: <span className="text-lm-cyan">{gameModeDuration(selectedGame.gameMode)}</span></span>
-            <span className="ml-auto text-lm-mid">{games.length} sessions today</span>
-          </>
-        ) : (
-          <span className="text-lm-mid">— No session selected —</span>
-        )}
+      <footer className="h-8 shrink-0 bg-[#101317] border-t border-black flex items-stretch text-[10px]">
+        <div className="flex items-center gap-4 px-3 text-[#9da1a6]">
+          {/* small icons */}
+          <button onClick={() => setShowActivity(true)} className="hover:text-white" title="Activity">
+            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M4 4h16v3H4zm0 5h10v3H4zm0 5h13v3H4z"/></svg>
+          </button>
+          <button onClick={() => setShowPool(true)} className="hover:text-white" title="Walk-in pool">
+            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><circle cx="12" cy="8" r="3"/><path d="M6 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+          </button>
+          <div className="flex items-center gap-1.5">
+            <svg viewBox="0 0 24 24" className="w-4 h-4 text-white" fill="currentColor"><path d="M12 2 L20 5 V12 C20 17 16 21 12 22 C8 21 4 17 4 12 V5 Z"/></svg>
+            <span className="text-white font-bold tabular-nums">{totalPacks} Vests</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <svg viewBox="0 0 24 24" className="w-3 h-3 text-[#9da1a6]" fill="currentColor"><path d="M12 2 L20 5 V12 C20 17 16 21 12 22 C8 21 4 17 4 12 V5 Z"/></svg>
+            <span className="tabular-nums">0 Junior vests</span>
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center text-[9px] text-[#5a5d62]">
+          {selectedGame ? (
+            <>
+              <span>{formatLongDate(selectedGame.startTime)} {formatTime(selectedGame.startTime)}</span>
+              <span className="mx-2">&middot;</span>
+              <span>{selectedGame.gameMode}</span>
+              <span className="mx-2">&middot;</span>
+              <span>{gameModeDuration(selectedGame.gameMode)}</span>
+            </>
+          ) : (
+            <span>&copy; 2026 - LaserMaxx Lasergames B.V. - LMXbooking v6.2.3.0</span>
+          )}
+        </div>
+        <div className="flex items-stretch">
+          <button className="px-4 text-[#9da1a6] hover:text-white text-[10px]">Backup</button>
+          <button className="px-4 text-[#9da1a6] hover:text-white text-[10px]">Support</button>
+        </div>
       </footer>
 
       {/* ============================================================ */}
@@ -942,39 +1002,46 @@ export default function ControlPage() {
 /*  Sub-components                                                     */
 /* ------------------------------------------------------------------ */
 
-function ActionButton({
-  label, onClick, highlight, danger, alert, small, selected, disabled,
+function BigActionButton({
+  label, icon, onClick, selected, disabled,
 }: {
   label: string;
+  icon: "game" | "group" | "calendar";
   onClick: () => void;
-  highlight?: boolean;
-  danger?: boolean;
-  alert?: boolean;
-  small?: boolean;
   selected?: boolean;
   disabled?: boolean;
 }) {
-  const colorClass = disabled
-    ? "border-lm-cyan/15 text-lm-mid cursor-not-allowed"
-    : danger
-    ? "border-lm-red/50 text-lm-red hover:bg-lm-red/10"
-    : selected
-    ? "border-lm-cyan text-lm-cyan bg-lm-cyan/12 outline outline-1 outline-lm-cyan -outline-offset-1"
-    : highlight
-    ? "border-lm-cyan text-lm-cyan hover:bg-lm-cyan/15 bg-lm-cyan/5"
-    : alert
-    ? "border-lm-yellow text-lm-yellow hover:bg-lm-yellow/10 animate-pulse"
-    : "border-lm-cyan/30 text-lm-light hover:bg-lm-cyan/10 hover:border-lm-cyan/60";
+  const iconSvg =
+    icon === "game" ? (
+      <svg viewBox="0 0 24 24" className="w-7 h-7" fill="currentColor">
+        <path d="M12 3a4 4 0 014 4v1h-8V7a4 4 0 014-4zm-6 7h12l-1 10H7L6 10z" />
+      </svg>
+    ) : icon === "group" ? (
+      <svg viewBox="0 0 24 24" className="w-7 h-7" fill="currentColor">
+        <circle cx="7" cy="8" r="2.5" />
+        <circle cx="17" cy="8" r="2.5" />
+        <circle cx="12" cy="6" r="2.5" />
+        <path d="M3 19c0-2.2 1.8-4 4-4s4 1.8 4 4M13 19c0-2.2 1.8-4 4-4s4 1.8 4 4M8 17c0-2.2 1.8-4 4-4s4 1.8 4 4" />
+      </svg>
+    ) : (
+      <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="3" y="5" width="18" height="16" rx="1" />
+        <path d="M3 9h18M8 3v4M16 3v4" />
+      </svg>
+    );
+
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`w-full ${small ? "py-2" : "py-3.5"} text-[10px] font-bold uppercase tracking-wider border bg-[#0a0a18] transition-colors ${colorClass}`}
+      className={`lmx-action-btn ${selected ? "selected" : ""} flex flex-col items-center justify-center gap-1 h-[88px] text-white text-[10px] font-medium tracking-wide disabled:opacity-40 disabled:cursor-not-allowed`}
     >
-      {label}
+      <span className="leading-none">{label}</span>
+      <span className="text-white/85">{iconSvg}</span>
     </button>
   );
 }
+
 
 function Column({
   header, width, children,
@@ -984,8 +1051,8 @@ function Column({
   children: React.ReactNode;
 }) {
   return (
-    <div className={`${width} shrink-0 flex flex-col border border-lm-cyan/30 bg-[#0a0a18] min-h-0`}>
-      <div className="px-2 py-1 border-b border-lm-cyan/20 text-[10px] font-bold text-lm-cyan/80 uppercase tracking-wider">
+    <div className={`${width} shrink-0 flex flex-col border border-[#3a3e46] bg-[#262a31]/95 min-h-0 backdrop-blur-sm`}>
+      <div className="px-2 py-1.5 border-b border-[#3a3e46] text-[10px] font-bold text-white uppercase tracking-wider">
         {header}
       </div>
       {children}
